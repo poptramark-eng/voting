@@ -57,16 +57,11 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
 
   const canGovern = ["OWNER", "ADMIN"].includes(membership.role);
   // The database remains authoritative for assignment expiry and permission checks.
-  const isAssignmentActive = (assignment: { status: string; expires_at: string | null } | null) =>
-    Boolean(
-      assignment &&
-      assignment.status === "ACTIVE" &&
-      (!assignment.expires_at || new Date(assignment.expires_at).getTime() > Date.now()),
-    );
-  const eventRole = isAssignmentActive(eventAssignment) ? eventAssignment?.role ?? null : null;
-  // A process assignment overrides the event assignment, including when expired or revoked.
+  const eventRole = eventAssignment?.status === "ACTIVE" ? eventAssignment.role : null;
+  // The database checks expiry and permission authoritatively. A process assignment
+  // overrides the event assignment, including when revoked or expired.
   const effectiveScopedRole = processAssignment
-    ? (isAssignmentActive(processAssignment) ? processAssignment.role : null)
+    ? (processAssignment.status === "ACTIVE" ? processAssignment.role : null)
     : eventRole;
   const canEdit = canGovern || effectiveScopedRole === "ELECTION_MANAGER";
   const canRequestPii = !canGovern &&
