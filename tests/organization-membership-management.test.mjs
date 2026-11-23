@@ -83,3 +83,15 @@ test("invitation token hashes are not directly selectable through the public Dat
   assert.doesNotMatch(invitationPrivacyMigration, /token_hash text/);
   assert.match(invitationPrivacyMigration, /public\.list_organization_invitations\([\s\S]*?security invoker/);
 });
+
+const ownerMembershipFix = readFileSync(
+  new URL("../supabase/migrations/20261123232000_allow_owner_membership_reactivation.sql", import.meta.url),
+  "utf8"
+);
+
+test("OWNER membership status changes preserve OWNER role and still protect the last active owner", () => {
+  assert.match(ownerMembershipFix, /if existing\.role = 'OWNER'/);
+  assert.match(ownerMembershipFix, /if target_role <> 'OWNER' then/);
+  assert.match(ownerMembershipFix, /if target_status <> 'ACTIVE' then[\s\S]*?if active_owner_count <= 1 then/);
+  assert.match(ownerMembershipFix, /Ownership role changes require the dedicated ownership governance flow/);
+});
