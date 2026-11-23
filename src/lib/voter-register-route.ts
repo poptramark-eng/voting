@@ -3,7 +3,7 @@ import {
   parseVoterRegisterPagination,
   splitLookaheadRows,
   toCsv,
-} from "@/lib/voter-register-export";
+} from "./voter-register-export";
 
 type RouteContext = { params: Promise<{ processId: string }> };
 type Session = { user?: { sub?: string } } | null;
