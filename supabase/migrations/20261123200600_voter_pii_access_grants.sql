@@ -30,7 +30,7 @@ create table public.voter_pii_access_requests (
   required_approvals smallint not null check (required_approvals between 1 and 3),
   requested_expires_at timestamptz not null,
   status text not null default 'PENDING'
-    check (status in ('PENDING', 'ACTIVE', 'REJECTED', 'REVOKED', 'STALE')),
+    check (status in ('PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTED', 'REVOKED', 'STALE')),
   granted_at timestamptz,
   expires_at timestamptz,
   resolved_at timestamptz,
@@ -327,6 +327,128 @@ revoke all on function private.max_voter_pii_grant_lifetime(public.assurance_tie
 revoke all on function private.active_voter_pii_grant(uuid) from public, anon, authenticated;
 revoke all on function private.has_active_voter_pii_grant(uuid) from public, anon, authenticated;
 grant execute on function private.has_active_voter_pii_grant(uuid) to authenticated;
+
+-- A tier increase suspends an active grant rather than silently
+-- retaining access under a weaker approval threshold or longer lifetime.
+create or replace function private.suspend_voter_pii_grants_on_process_tier_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  suspended_row record;
+begin
+  if tg_op = 'UPDATE'
+     and private.assurance_tier_rank(new.assurance_tier)
+         <= private.assurance_tier_rank(old.assurance_tier) then
+    return new;
+  end if;
+
+  for suspended_row in
+    update public.voter_pii_access_requests r
+    set status = 'SUSPENDED',
+        resolved_at = now()
+    where r.status = 'ACTIVE'
+      and (
+        (
+          r.scope_type = 'PROCESS'
+          and r.process_id = new.id
+          and private.assurance_tier_rank(new.assurance_tier)
+              > private.assurance_tier_rank(r.assurance_tier)
+        )
+        or (
+          r.scope_type = 'EVENT'
+          and r.event_id = new.event_id
+          and private.assurance_tier_rank(
+            private.resolve_voter_pii_assurance(new.event_id, null)
+          ) > private.assurance_tier_rank(r.assurance_tier)
+        )
+      )
+    returning r.id, r.organization_id, r.event_id, r.process_id,
+              r.recipient_user_id, r.assurance_tier
+  loop
+    insert into public.audit_events (
+      organization_id, actor_user_id, action, resource_type, resource_id, event_data
+    )
+    values (
+      suspended_row.organization_id, null, 'VOTER_PII_ACCESS_SUSPENDED',
+      'voter_pii_access_request', suspended_row.id::text,
+      jsonb_build_object(
+        'event_id', suspended_row.event_id,
+        'process_id', suspended_row.process_id,
+        'recipient_user_id', suspended_row.recipient_user_id,
+        'approved_tier', suspended_row.assurance_tier,
+        'reason', 'A covered process assurance tier increased above the approved tier'
+      )
+    );
+  end loop;
+
+  return new;
+end;
+$function$;
+
+drop trigger if exists voting_processes_suspend_voter_pii_grants
+  on public.voting_processes;
+create trigger voting_processes_suspend_voter_pii_grants
+after insert or update of assurance_tier on public.voting_processes
+for each row execute function private.suspend_voter_pii_grants_on_process_tier_change();
+
+create or replace function private.suspend_event_voter_pii_grants_on_tier_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  suspended_row record;
+begin
+  if private.assurance_tier_rank(new.assurance_tier)
+     <= private.assurance_tier_rank(old.assurance_tier) then
+    return new;
+  end if;
+
+  for suspended_row in
+    update public.voter_pii_access_requests r
+    set status = 'SUSPENDED',
+        resolved_at = now()
+    where r.event_id = new.id
+      and r.scope_type = 'EVENT'
+      and r.status = 'ACTIVE'
+      and private.assurance_tier_rank(new.assurance_tier)
+          > private.assurance_tier_rank(r.assurance_tier)
+    returning r.id, r.organization_id, r.event_id, r.recipient_user_id, r.assurance_tier
+  loop
+    insert into public.audit_events (
+      organization_id, actor_user_id, action, resource_type, resource_id, event_data
+    )
+    values (
+      suspended_row.organization_id, null, 'VOTER_PII_ACCESS_SUSPENDED',
+      'voter_pii_access_request', suspended_row.id::text,
+      jsonb_build_object(
+        'event_id', suspended_row.event_id,
+        'recipient_user_id', suspended_row.recipient_user_id,
+        'approved_tier', suspended_row.assurance_tier,
+        'new_event_tier', new.assurance_tier,
+        'reason', 'The parent event assurance tier increased above the approved tier'
+      )
+    );
+  end loop;
+
+  return new;
+end;
+$function$;
+
+drop trigger if exists voting_events_suspend_voter_pii_grants
+  on public.voting_events;
+create trigger voting_events_suspend_voter_pii_grants
+after update of assurance_tier on public.voting_events
+for each row execute function private.suspend_event_voter_pii_grants_on_tier_change();
+
+revoke all on function private.suspend_voter_pii_grants_on_process_tier_change()
+  from public, anon, authenticated;
+revoke all on function private.suspend_event_voter_pii_grants_on_tier_change()
+  from public, anon, authenticated;
 
 create or replace function public.request_voter_pii_access(
   target_scope text,
@@ -738,7 +860,7 @@ begin
   ) then
     raise exception 'Only an active organization OWNER or ADMIN can revoke voter PII access' using errcode = '42501';
   end if;
-  if request_row.status not in ('PENDING', 'ACTIVE') then
+  if request_row.status not in ('PENDING', 'ACTIVE', 'SUSPENDED') then
     raise exception 'Only pending or active grants can be revoked' using errcode = '22023';
   end if;
 
