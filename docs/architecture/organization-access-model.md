@@ -164,11 +164,43 @@ The actor who prepares a sensitive change cannot approve that same change. The e
 - Assignment and revocation operations must be atomic with their audit record. Reject invalid role/scope combinations and inactive memberships; fail closed when scope ownership or authorization cannot be established.
 - These assignment-management rights do not give an assignee permissions beyond their own organization-level authority. Process-level assignments can only narrow applicable event-level permissions.
 
-## 11. Open decisions before implementation
+## 11. Scoped-role permission matrix
 
-1. Which individual capabilities within the three approved scoped roles can be delegated at event and process scope, and whether any additional approval is required for those assignments.
+The following is the accepted default permission profile for event- and process-scoped assignments. A permission is available only within the exact assigned event or process, while the actor and assignee both retain active organization membership. These roles do not create organization-wide permissions.
+
+| Capability within assigned scope | ELECTION_MANAGER | AUDITOR | OBSERVER |
+|---|---:|---:|---:|
+| View event/process overview and operational status | Yes | Yes | Published/approved view only |
+| View configuration and configuration history | Yes | Read-only evidence view | Published configuration summary only |
+| Create or edit draft process configuration | Yes | No | No |
+| Manage contest/ballot structure while process is draft | Yes | No | No |
+| Manage voter-register entries before register finalization | Yes | No | No |
+| View voter-register entries or voter-identifying data | Only when separately authorized and necessary for assigned duties | Only through a separate, explicit, minimized audit-data grant | No |
+| View register counts and aggregate participation statistics | Yes | Yes | Published aggregates only |
+| Submit a process for approval | Yes, where the workflow permits | No | No |
+| Approve own configuration or own prepared changes | No | No | No |
+| View audit trail and operational evidence | Own/assigned-scope operational evidence | Full permitted audit evidence within assigned scope, read-only | Published or observer-safe evidence only |
+| View results | Authorized operational summaries; no ballot choices | Results and supporting evidence, subject to assurance policy | Published results only |
+| View individual ballot selections or link a voter to a choice | No | No | No |
+| Open, close, suspend, resume, certify or publish a process | No, unless a separate approved operational capability is explicitly introduced by a later policy | No | No |
+| Modify audit evidence, results or finalized voter register | No | No | No |
+| Export data | Operational, non-secret data needed for assigned work; PII requires separate authorization | Audit evidence and permitted reports; PII requires separate authorization | Published/observer-safe material only |
+
+### Scope and inheritance rules
+
+1. An event-level assignment applies to that event and its child processes, subject to any narrower process-level assignment. It never applies to another event or organization.
+2. A process-level assignment applies only to that process and must reference its actual parent event and organization.
+3. When a process-level assignment exists for a member and process, effective process permissions are the intersection of the organization-level permission ceiling, the applicable event-level permission set (if one exists), and the process-level permission set. A process assignment therefore cannot add a capability excluded by an event-level assignment. If no event-level assignment exists, the process assignment is still bounded by the organization-level permission ceiling.
+4. Where multiple applicable assignments produce conflicting or ambiguous permissions, deny the disputed capability until an authorized administrator resolves the assignments. Do not select the more permissive role.
+5. No scoped role may grant ballot-choice access, self-approval, or authority to certify/publish results. Those capabilities, if ever introduced, require a separate assurance and separation-of-duties design.
+6. Voter-identifying data is not implied by an ELECTION_MANAGER or AUDITOR assignment. It requires a separate, purpose-limited authorization, and must be excluded from observer access.
+7. These defaults intentionally keep process lifecycle transitions and final approvals outside the three scoped roles. Any later need for opening/closing/suspending processes must be separately designed, approved and audited rather than inferred from the ELECTION_MANAGER role.
+
+## 12. Open decisions before implementation
+
+1. Whether voter-identifying data grants require a separate approval or periodic re-authorization, and which assurance tiers apply.
 2. Whether invitations are email-only initially and which verification rule is required when the Auth0 email is unverified.
 3. Which actions require two-person approval at each assurance tier.
 4. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
 
-The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, and OWNER/ADMIN authority to manage those scoped assignments are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
+The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, and the default scoped-role permission matrix in Section 11 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
