@@ -21,6 +21,17 @@ export async function POST(_request: Request, context: RouteContext) {
 
   try {
     const supabase = await createSupabaseServerClient();
+    const { data: invitation, error: lookupError } = await supabase
+      .from("organization_invitations")
+      .select("id")
+      .eq("id", invitationId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+
+    if (lookupError || !invitation) {
+      return NextResponse.json({ error: "Organization invitation not found." }, { status: lookupError ? 500 : 404 });
+    }
+
     const { error } = await supabase.rpc("revoke_organization_invitation", {
       target_invitation: invitationId,
     });
