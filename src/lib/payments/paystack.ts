@@ -53,12 +53,22 @@ export function getPaystackPrice(priceCode: string): PaystackPrice | null {
   const currency = entry.currency;
   const description = entry.description;
 
+  const minimumAmounts: Record<string, number> = {
+    KES: 300,
+    USD: 200,
+    NGN: 5000,
+    GHS: 10,
+    ZAR: 100,
+    XOF: 100,
+  };
+
   if (
     typeof amountMinor !== "number" ||
     !Number.isSafeInteger(amountMinor) ||
-    amountMinor <= 0 ||
     typeof currency !== "string" ||
-    !/^[A-Z]{3}$/.test(currency) ||
+    !(currency in minimumAmounts) ||
+    amountMinor < minimumAmounts[currency] ||
+    amountMinor > 10_000_000 ||
     typeof description !== "string" ||
     description.trim().length < 2
   ) {
