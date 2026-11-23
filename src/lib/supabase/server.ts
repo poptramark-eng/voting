@@ -4,26 +4,47 @@ import { createClient } from "@supabase/supabase-js";
 import { auth0 } from "@/lib/auth0";
 import type { Database } from "@/types/database.types";
 
+function readJwtRoleClaim(token: string): string | undefined {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return undefined;
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      role?: unknown;
+    };
+    return typeof claims.role === "string" ? claims.role : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Creates a request-scoped Supabase client authenticated with the Auth0 ID token.
- *
- * This helper is server-only: the Auth0 ID token must never be sent to browser
- * code. Supabase RLS remains the authorization boundary; application roles and
- * organization membership are resolved from the database, not Auth0 profile data.
+ * Supabase Third-Party Auth requires the literal role=authenticated claim on this
+ * ID token. We inspect only that claim for diagnostics; Supabase verifies the JWT.
  */
 export async function createSupabaseServerClient() {
   const session = await auth0.getSession();
   const idToken = session?.tokenSet.idToken;
 
   if (!session?.user.sub || !idToken) {
-    throw new Error("An authenticated Auth0 session with an ID token is required.");
+    throw new Error("AUTH_SESSION_MISSING");
+  }
+
+  const tokenRole = readJwtRoleClaim(idToken);
+  if (tokenRole !== "authenticated") {
+    // Never log or return the token itself, or any other token claims.
+    console.error("Auth0 ID token is missing the Supabase role claim:", {
+      hasRoleClaim: tokenRole !== undefined,
+      roleClaim: tokenRole ?? null,
+    });
+    throw new Error("AUTH0_ID_TOKEN_ROLE_CLAIM_MISSING");
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!supabaseUrl || !supabasePublishableKey) {
-    throw new Error("Supabase URL and publishable key must be configured.");
+    throw new Error("SUPABASE_ENVIRONMENT_MISSING");
   }
 
   const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
@@ -35,8 +56,6 @@ export async function createSupabaseServerClient() {
     },
   });
 
-  // Provision or synchronise the internal UUID mapped to the immutable Auth0 sub.
-  // Column privileges and RLS ensure the caller can only write their own identity.
   const { error } = await supabase.from("app_users").upsert(
     {
       auth_subject: session.user.sub,
@@ -47,10 +66,11 @@ export async function createSupabaseServerClient() {
   );
 
   if (error) {
-    // Keep provider/database details out of the response; the server log retains
-    // the original Supabase error for diagnosis.
-    console.error("Supabase application identity provisioning failed:", error);
-    throw new Error("Unable to provision the authenticated application identity.");
+    console.error("Supabase application identity provisioning failed:", {
+      code: error.code,
+      message: error.message,
+    });
+    throw new Error("SUPABASE_IDENTITY_PROVISIONING_FAILED");
   }
 
   return supabase;
