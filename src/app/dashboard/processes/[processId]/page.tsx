@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ProcessConfiguration } from "./process-configuration";
 import { ProcessLifecycleControls } from "./process-lifecycle-controls";
 import { VoterRegisterImport } from "./voter-register-import";
+import { VoterRegisterWorkspace } from "./voter-register-workspace";
 
 type PageProps = { params: Promise<{ processId: string }> };
 
@@ -49,20 +50,20 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
 
   const [{ data: eventAssignment }, { data: processAssignment }] = await Promise.all([
     supabase.from("event_role_assignments").select("id, role, status, expires_at")
-      .eq("event_id", event.id).eq("user_id", appUser.id)
-      .eq("role", "ELECTION_MANAGER").maybeSingle(),
+      .eq("event_id", event.id).eq("user_id", appUser.id).maybeSingle(),
     supabase.from("process_role_assignments").select("id, role, status, expires_at")
       .eq("process_id", processId).eq("user_id", appUser.id).maybeSingle(),
   ]);
 
   const canGovern = ["OWNER", "ADMIN"].includes(membership.role);
-  // Expiry is checked authoritatively by private.has_process_permission() in RLS.
-  const assignmentIsActive = (assignment: { status: string } | null) =>
-    Boolean(assignment && assignment.status === "ACTIVE");
-  const hasEventManagerRole = assignmentIsActive(eventAssignment);
-  const processRoleAllowsManagement = !processAssignment ||
-    (processAssignment.role === "ELECTION_MANAGER" && assignmentIsActive(processAssignment));
-  const canEdit = canGovern || (hasEventManagerRole && processRoleAllowsManagement);
+  // The database remains authoritative for assignment expiry and permission checks.
+  const eventRole = eventAssignment?.status === "ACTIVE" ? eventAssignment.role : null;
+  const effectiveScopedRole = processAssignment
+    ? (processAssignment.status === "ACTIVE" ? processAssignment.role : null)
+    : eventRole;
+  const canEdit = canGovern || effectiveScopedRole === "ELECTION_MANAGER";
+  const canRequestPii = !canGovern &&
+    (effectiveScopedRole === "ELECTION_MANAGER" || effectiveScopedRole === "AUDITOR");
 
   type GovernanceApproval = {
     decision: string;
@@ -146,6 +147,15 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
 
       <section className="panel" style={{ marginTop: 24, maxWidth: "none" }}>
         <VoterRegisterImport processId={processId} canEdit={canEdit && process.status === "DRAFT"} />
+        <VoterRegisterWorkspace
+          processId={processId}
+          eventId={event.id}
+          currentUserId={appUser.id}
+          assuranceTier={process.assurance_tier}
+          canManage={canEdit && process.status === "DRAFT"}
+          canRequestPii={canRequestPii}
+          canGovern={canGovern}
+        />
       </section>
     </main>
   );
