@@ -49,7 +49,7 @@ export async function POST(request: Request, context: RouteContext) {
       const status =
         error.code === "42501" ? 403 :
         error.code === "P0002" ? 404 :
-        error.code === "22023" ? 409 : 500;
+        error.code === "22023" || error.code === "23505" ? 409 : 500;
       console.error("Workflow decision failed:", { code: error.code, message: error.message });
       return NextResponse.json({ error: error.message }, { status });
     }
