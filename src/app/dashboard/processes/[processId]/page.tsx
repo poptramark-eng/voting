@@ -6,6 +6,7 @@ import { ProcessConfiguration } from "./process-configuration";
 import { ProcessLifecycleControls } from "./process-lifecycle-controls";
 import { VoterRegisterImport } from "./voter-register-import";
 import { VoterRegisterWorkspace } from "./voter-register-workspace";
+import { ProcessRoleAssignments } from "./process-role-assignments";
 
 type PageProps = { params: Promise<{ processId: string }> };
 
@@ -66,6 +67,68 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
   const canEdit = canGovern || effectiveScopedRole === "ELECTION_MANAGER";
   const canRequestPii = !canGovern &&
     (effectiveScopedRole === "ELECTION_MANAGER" || effectiveScopedRole === "AUDITOR");
+
+  let initialMembers: Array<{
+    user_id: string;
+    email: string | null;
+    display_name: string | null;
+    role: string;
+    status: string;
+  }> = [];
+  let initialEventAssignments: Array<{
+    id: string;
+    user_id: string;
+    role: "ELECTION_MANAGER" | "AUDITOR" | "OBSERVER";
+    status: string;
+    expires_at: string | null;
+    created_at: string;
+  }> = [];
+  let initialProcessAssignments: Array<{
+    id: string;
+    user_id: string;
+    role: "ELECTION_MANAGER" | "AUDITOR" | "OBSERVER";
+    status: string;
+    expires_at: string | null;
+    created_at: string;
+  }> = [];
+
+  if (canGovern) {
+    const [
+      { data: memberRows, error: memberError },
+      { data: eventAssignmentRows, error: eventAssignmentsError },
+      { data: processAssignmentRows, error: processAssignmentsError },
+    ] = await Promise.all([
+      supabase.rpc("list_organization_members", { target_org: event.organization_id }),
+      supabase.from("event_role_assignments")
+        .select("id,user_id,role,status,expires_at,created_at")
+        .eq("event_id", event.id)
+        .order("created_at", { ascending: false }),
+      supabase.from("process_role_assignments")
+        .select("id,user_id,role,status,expires_at,created_at")
+        .eq("process_id", processId)
+        .order("created_at", { ascending: false }),
+    ]);
+
+    if (memberError || eventAssignmentsError || processAssignmentsError) {
+      throw new Error("Unable to load process-scoped role administration.");
+    }
+
+    initialMembers = (memberRows ?? []).filter((member) => member.status === "ACTIVE").map((member) => ({
+      user_id: member.user_id,
+      email: member.email,
+      display_name: member.display_name,
+      role: member.role,
+      status: member.status,
+    }));
+    initialEventAssignments = (eventAssignmentRows ?? []).map((assignment) => ({
+      ...assignment,
+      role: assignment.role as "ELECTION_MANAGER" | "AUDITOR" | "OBSERVER",
+    }));
+    initialProcessAssignments = (processAssignmentRows ?? []).map((assignment) => ({
+      ...assignment,
+      role: assignment.role as "ELECTION_MANAGER" | "AUDITOR" | "OBSERVER",
+    }));
+  }
 
   type GovernanceApproval = {
     decision: string;
@@ -139,6 +202,15 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
           requests={governanceRequests}
         />
       </section>
+
+      {canGovern && (
+        <ProcessRoleAssignments
+          processId={processId}
+          initialMembers={initialMembers}
+          initialEventAssignments={initialEventAssignments}
+          initialProcessAssignments={initialProcessAssignments}
+        />
+      )}
 
       <section className="panel" style={{ marginTop: 24, maxWidth: "none" }}>
         <p className="eyebrow">Ballot structure</p>
