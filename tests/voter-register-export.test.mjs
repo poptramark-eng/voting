@@ -48,7 +48,7 @@ test("CSV cells neutralize formula-leading values and escape CSV syntax", () => 
     ["-1+2", "\"'-1+2\""],
     ["safe, value", "\"safe, value\""],
     ['say "hello"', '"say ""hello"""'],
-    ["line1\\r\\nline2", '"line1\\r\\nline2"'],
+    ["line1\r\nline2", '"line1\r\nline2"'],
     [null, '""'],
     ["normal", '"normal"'],
   ];
@@ -58,7 +58,7 @@ test("CSV cells neutralize formula-leading values and escape CSV syntax", () => 
 test("CSV export uses the union of columns and preserves CRLF separators", () => {
   assert.equal(
     toCsv([{ name: "A", email: "a@example.test" }, { name: "B", phone: "123" }]),
-    '"name","email","phone"\\r\\n"A","a@example.test",""\\r\\n"B","","123"',
+    '"name","email","phone"\r\n"A","a@example.test",""\r\n"B","","123"',
   );
   assert.equal(toCsv([]), "");
 });
