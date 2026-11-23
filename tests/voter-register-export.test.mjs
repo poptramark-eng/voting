@@ -141,7 +141,7 @@ test("route POST exports only the requested rows and sets X-Has-More from look-a
   const csv = await response.text();
   assert.equal(response.status, 200);
   assert.deepEqual(call, [validProcessId, "EXPORT", 2, 0]);
-  assert.equal(csv, '"displayName"\\r\\n"\'=1+1"');
+  assert.equal(csv, '"displayName"\r\n"\'=1+1"');
   assert.equal(response.headers.get("x-has-more"), "true");
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
