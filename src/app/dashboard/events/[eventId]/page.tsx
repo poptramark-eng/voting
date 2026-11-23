@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth0 } from "@/lib/auth0";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CreateProcessForm } from "./create-process-form";
+import { EventRoleAssignments } from "./event-role-assignments";
 
 type PageProps = { params: Promise<{ eventId: string }> };
 
@@ -46,16 +47,57 @@ export default async function EventWorkspacePage({ params }: PageProps) {
   if (!organization) notFound();
   if (error) throw new Error("Unable to load voting processes.");
 
-  const { data: eventAssignment } = await supabase.from("event_role_assignments")
-    .select("id, expires_at")
-    .eq("event_id", eventId)
-    .eq("user_id", appUser.id)
-    .eq("role", "ELECTION_MANAGER")
-    .eq("status", "ACTIVE")
-    .maybeSingle();
+  const canGovern = ["OWNER", "ADMIN"].includes(membership.role);
+  const { data: canCreateFromScope, error: scopedPermissionError } = canGovern
+    ? { data: false, error: null }
+    : await supabase.rpc("has_current_event_permission", {
+        target_event: eventId,
+        target_permission: "process.create",
+      });
+  if (scopedPermissionError) throw new Error("Unable to verify event-scoped process permissions.");
 
-  // The database re-checks assignment expiry and permission on every write.
-  const canCreate = ["OWNER", "ADMIN"].includes(membership.role) || Boolean(eventAssignment);
+  // Database permission checks include event assignment status and expiry.
+  const canCreate = canGovern || Boolean(canCreateFromScope);
+  const canManageAssignments = canGovern;
+  let initialMembers: Array<{
+    user_id: string;
+    email: string | null;
+    display_name: string | null;
+    role: string;
+    status: string;
+  }> = [];
+  let initialAssignments: Array<{
+    id: string;
+    user_id: string;
+    role: "ELECTION_MANAGER" | "AUDITOR" | "OBSERVER";
+    status: string;
+    expires_at: string | null;
+    created_at: string;
+  }> = [];
+
+  if (canManageAssignments) {
+    const [{ data: memberRows, error: memberError }, { data: assignmentRows, error: assignmentError }] = await Promise.all([
+      supabase.rpc("list_organization_members", { target_org: event.organization_id }),
+      supabase.from("event_role_assignments")
+        .select("id,user_id,role,status,expires_at,created_at")
+        .eq("event_id", eventId)
+        .order("created_at", { ascending: false }),
+    ]);
+    if (memberError || assignmentError) {
+      throw new Error("Unable to load event-scoped role administration.");
+    }
+    initialMembers = (memberRows ?? []).filter((member) => member.status === "ACTIVE").map((member) => ({
+      user_id: member.user_id,
+      email: member.email,
+      display_name: member.display_name,
+      role: member.role,
+      status: member.status,
+    }));
+    initialAssignments = (assignmentRows ?? []).map((assignment) => ({
+      ...assignment,
+      role: assignment.role as "ELECTION_MANAGER" | "AUDITOR" | "OBSERVER",
+    }));
+  }
 
   return (
     <main className="shell" style={{ paddingTop: 40, paddingBottom: 64 }}>
@@ -93,6 +135,14 @@ export default async function EventWorkspacePage({ params }: PageProps) {
           <p className="muted" style={{ marginTop: 20 }}>No processes have been configured for this event yet.</p>
         )}
       </section>
+
+      {canManageAssignments && (
+        <EventRoleAssignments
+          eventId={eventId}
+          initialMembers={initialMembers}
+          initialAssignments={initialAssignments}
+        />
+      )}
 
       {canCreate ? (
         <section className="panel" style={{ marginTop: 24 }}>

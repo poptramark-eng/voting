@@ -1195,6 +1195,14 @@ export type Database = {
         Args: { error_message: string; target_event_key: string }
         Returns: boolean
       }
+      has_current_event_permission: {
+        Args: { target_event: string; target_permission: string }
+        Returns: boolean
+      }
+      has_current_process_permission: {
+        Args: { target_permission: string; target_process: string }
+        Returns: boolean
+      }
       list_organization_invitations: {
         Args: { target_org: string }
         Returns: {
