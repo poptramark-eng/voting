@@ -1,6 +1,6 @@
 # Organization membership and authorization design
 
-Status: **Proposed implementation baseline; multiple active owners decision accepted**  
+Status: **Proposed implementation baseline; multiple active owners and owner-only ADMIN governance accepted**  
 Date: 2026-11-23
 
 ## 1. Purpose and scope
@@ -15,14 +15,16 @@ This design covers organization membership, invitations, role assignment, worksp
 2. A person may have memberships in multiple organizations. Each membership is scoped to exactly one organization.
 3. An organization may have multiple active OWNER memberships.
 4. Every organization must retain at least one active OWNER. The last active OWNER cannot be suspended, removed, demoted or transferred away until another OWNER has been made active.
-5. Email is a mutable contact/invitation attribute, never the identity key or proof of membership.
-6. A membership grants access only when its status is `ACTIVE`. `INVITED`, `SUSPENDED` and `REMOVED` grant no workspace access.
-7. Roles and permissions are authoritative in PostgreSQL. Never accept role, organization ID, or permissions from client-controlled metadata or JWT custom claims.
-8. Every organization-owned record is accessed through a verified organization scope. A client-supplied organization ID is only a selector; it is never proof of access.
-9. Server-side authorization and database RLS both enforce tenant boundaries. UI hiding is not authorization.
-10. Organization membership never makes a person eligible to vote automatically. Voter eligibility is a separate, process-scoped record.
-11. Auditors and observers are read-only. Neither can modify registers, process configuration, ballots, results, or audit evidence.
-12. Secret ballot content is never exposed through ordinary organization administration, audit, observer or support interfaces.
+5. Only an OWNER may appoint, change or remove an ADMIN. ADMINs cannot manage other ADMINs.
+6. ADMINs may manage ordinary members and operational roles, but cannot grant OWNER or ADMIN.
+7. Email is a mutable contact/invitation attribute, never the identity key or proof of membership.
+8. A membership grants access only when its status is `ACTIVE`. `INVITED`, `SUSPENDED` and `REMOVED` grant no workspace access.
+9. Roles and permissions are authoritative in PostgreSQL. Never accept role, organization ID, or permissions from client-controlled metadata or JWT custom claims.
+10. Every organization-owned record is accessed through a verified organization scope. A client-supplied organization ID is only a selector; it is never proof of access.
+11. Server-side authorization and database RLS both enforce tenant boundaries. UI hiding is not authorization.
+12. Organization membership never makes a person eligible to vote automatically. Voter eligibility is a separate, process-scoped record.
+13. Auditors and observers are read-only. Neither can modify registers, process configuration, ballots, results, or audit evidence.
+14. Secret ballot content is never exposed through ordinary organization administration, audit, observer or support interfaces.
 
 ## 3. Initial organization roles
 
@@ -32,9 +34,10 @@ The database currently defines: `OWNER`, `ADMIN`, `ELECTION_MANAGER`, `AUDITOR`,
 |---|---:|---:|---:|---:|---:|---:|---:|
 | View organization workspace | Yes | Yes | Yes | Scoped read | Scoped read | Billing view | Limited |
 | Edit organization profile/settings | Yes | Yes | No | No | No | No | No |
-| Invite members | Yes | Yes | No | No | No | No | No |
+| Invite ordinary members and operational roles | Yes | Yes | No | No | No | No | No |
+| Assign/change/remove ADMIN | Yes | No | No | No | No | No | No |
+| Assign/change/remove OWNER | Yes, dedicated governance flow | No | No | No | No | No | No |
 | Change ordinary member roles/status | Yes | Yes | No | No | No | No | No |
-| Assign/remove OWNER or ADMIN | Owner-only governance flow | No | No | No | No | No | No |
 | Transfer ownership | Yes, dedicated flow | No | No | No | No | No | No |
 | Create/edit draft voting events/processes | Yes | Yes | Yes | No | No | No | No |
 | Manage voter register before finalization | Yes | Yes | Yes | Read only if explicitly scoped | No | No | No |
@@ -49,8 +52,8 @@ The database currently defines: `OWNER`, `ADMIN`, `ELECTION_MANAGER`, `AUDITOR`,
 
 ### Role interpretation
 
-- **OWNER**: organization-level governance authority. An organization can have multiple active owners. Each owner can invite another owner only through an explicit, re-authenticated and audited ownership-governance workflow. The last active owner cannot be removed, suspended or demoted. Organization closure remains subject to retention/legal-hold rules.
-- **ADMIN**: day-to-day workspace and member administration. Cannot take ownership, remove/demote owners, bypass separation-of-duties controls or unilaterally certify high-assurance results.
+- **OWNER**: organization-level governance authority. An organization can have multiple active owners. Each owner can appoint another owner or ADMIN only through an explicit, re-authenticated and audited governance workflow. The last active owner cannot be removed, suspended or demoted. Organization closure remains subject to retention/legal-hold rules.
+- **ADMIN**: day-to-day workspace and member administration. May manage ordinary members and operational roles only. Cannot appoint, change or remove ADMINs or OWNERs; cannot take ownership, bypass separation-of-duties controls or unilaterally certify high-assurance results.
 - **ELECTION_MANAGER**: prepares and operates voting events/processes and voter registers within assigned scope. Cannot approve their own sensitive configuration or certify results.
 - **AUDITOR**: read-only access to explicitly assigned process evidence, audit trails and permitted reports. Access to personal data is separately granted and minimized.
 - **OBSERVER**: read-only access to a deliberately limited observer view and published evidence. No voter PII, hidden configuration, ballot content or write capability.
@@ -83,7 +86,7 @@ The database currently defines: `OWNER`, `ADMIN`, `ELECTION_MANAGER`, `AUDITOR`,
 ### Enforcement requirements
 
 - Centralize checks in server-only application services such as `requireOrganizationAccess(orgId, permission)`; do not scatter role-string checks across UI components.
-- Use permission identifiers (for example `organization.members.invite`, `election.process.configure`, `voter_register.manage`, `audit.read`, `billing.manage`) as the application-facing contract.
+- Use permission identifiers (for example `organization.members.invite`, `organization.admins.manage`, `election.process.configure`, `voter_register.manage`, `audit.read`, `billing.manage`) as the application-facing contract.
 - Map the initial fixed roles to permission sets in trusted server/database code. Keep the role-to-permission map versioned and testable.
 - Keep RLS policies aligned with those permissions. For high-risk writes, prefer narrowly scoped database functions that validate actor, organization, state transition and separation-of-duties constraints.
 - Never use the Supabase service-role key for ordinary user requests; it bypasses RLS.
@@ -127,7 +130,8 @@ The actor who prepares a sensitive change cannot approve that same change. The e
 - A user belonging to A and B can access each only when the request explicitly selects a workspace and active membership is rechecked.
 - Email changes do not change identity or transfer memberships.
 - A client cannot elevate its role by changing request JSON, headers, query parameters, local storage or Auth0 profile metadata.
-- ADMIN cannot assign/remove OWNER or ADMIN, and cannot remove/demote an owner.
+- ADMIN cannot assign/remove OWNER or ADMIN, cannot invite ADMIN, and cannot remove/demote an owner or another ADMIN.
+- OWNER can appoint/change/remove ADMIN through the audited governance workflow.
 - The system permits multiple active OWNER memberships.
 - The last active OWNER cannot be suspended, removed, demoted or transferred away.
 - ELECTION_MANAGER cannot approve their own sensitive process change.
@@ -139,10 +143,9 @@ The actor who prepares a sensitive change cannot approve that same change. The e
 
 ## 10. Open decisions before implementation
 
-1. Whether ADMIN may manage other ADMIN memberships, or only ordinary roles.
-2. Whether role assignment can be customized per voting event/process in the first release, or remains organization-wide initially.
-3. Whether invitations are email-only initially and which verification rule is required when the Auth0 email is unverified.
-4. Which actions require two-person approval at each assurance tier.
-5. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
+1. Whether role assignment can be customized per voting event/process in the first release, or remains organization-wide initially.
+2. Whether invitations are email-only initially and which verification rule is required when the Auth0 email is unverified.
+3. Which actions require two-person approval at each assurance tier.
+4. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
 
-The multiple-active-OWNER decision is accepted. The rest of this document remains a design proposal, not authorization to silently change production schema or permissions.
+The multiple-active-OWNER and owner-only ADMIN governance decisions are accepted. The rest of this document remains a design proposal, not authorization to silently change production schema or permissions.
