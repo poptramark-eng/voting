@@ -348,9 +348,9 @@ begin
 
   for suspended_row in
     update public.voter_pii_access_requests r
-    set status = 'SUSPENDED',
+    set status = case when r.status = 'ACTIVE' then 'SUSPENDED' else 'STALE' end,
         resolved_at = now()
-    where r.status = 'ACTIVE'
+    where r.status in ('ACTIVE', 'PENDING')
       and (
         (
           r.scope_type = 'PROCESS'
@@ -367,13 +367,17 @@ begin
         )
       )
     returning r.id, r.organization_id, r.event_id, r.process_id,
-              r.recipient_user_id, r.assurance_tier
+              r.recipient_user_id, r.assurance_tier, r.status
   loop
     insert into public.audit_events (
       organization_id, actor_user_id, action, resource_type, resource_id, event_data
     )
     values (
-      suspended_row.organization_id, null, 'VOTER_PII_ACCESS_SUSPENDED',
+      suspended_row.organization_id,
+      null,
+      case when suspended_row.status = 'SUSPENDED'
+        then 'VOTER_PII_ACCESS_SUSPENDED'
+        else 'VOTER_PII_ACCESS_REQUEST_STALE' end,
       'voter_pii_access_request', suspended_row.id::text,
       jsonb_build_object(
         'event_id', suspended_row.event_id,
@@ -411,20 +415,24 @@ begin
 
   for suspended_row in
     update public.voter_pii_access_requests r
-    set status = 'SUSPENDED',
+    set status = case when r.status = 'ACTIVE' then 'SUSPENDED' else 'STALE' end,
         resolved_at = now()
     where r.event_id = new.id
       and r.scope_type = 'EVENT'
-      and r.status = 'ACTIVE'
+      and r.status in ('ACTIVE', 'PENDING')
       and private.assurance_tier_rank(new.assurance_tier)
           > private.assurance_tier_rank(r.assurance_tier)
-    returning r.id, r.organization_id, r.event_id, r.recipient_user_id, r.assurance_tier
+    returning r.id, r.organization_id, r.event_id, r.recipient_user_id, r.assurance_tier, r.status
   loop
     insert into public.audit_events (
       organization_id, actor_user_id, action, resource_type, resource_id, event_data
     )
     values (
-      suspended_row.organization_id, null, 'VOTER_PII_ACCESS_SUSPENDED',
+      suspended_row.organization_id,
+      null,
+      case when suspended_row.status = 'SUSPENDED'
+        then 'VOTER_PII_ACCESS_SUSPENDED'
+        else 'VOTER_PII_ACCESS_REQUEST_STALE' end,
       'voter_pii_access_request', suspended_row.id::text,
       jsonb_build_object(
         'event_id', suspended_row.event_id,
@@ -663,10 +671,11 @@ begin
     request_row.process_id
   );
 
-  if current_tier <> request_row.assurance_tier
+  if private.assurance_tier_rank(current_tier)
+       > private.assurance_tier_rank(request_row.assurance_tier)
      or request_row.requested_expires_at <= now()
      or request_row.requested_expires_at >
-        now() + private.max_voter_pii_grant_lifetime(current_tier) then
+        now() + private.max_voter_pii_grant_lifetime(request_row.assurance_tier) then
     update public.voter_pii_access_requests
     set status = 'STALE', resolved_at = now()
     where id = request_row.id;
