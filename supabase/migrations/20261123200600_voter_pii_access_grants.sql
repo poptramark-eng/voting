@@ -459,6 +459,156 @@ revoke all on function private.suspend_voter_pii_grants_on_process_tier_change()
 revoke all on function private.suspend_event_voter_pii_grants_on_tier_change()
   from public, anon, authenticated;
 
+-- Membership or scope-assignment loss permanently suspends affected grants.
+-- Restoring the membership/assignment does not silently reactivate a PII grant.
+create or replace function private.suspend_voter_pii_grants_for_recipient(
+  target_org uuid,
+  target_user uuid,
+  target_reason text,
+  target_event uuid default null,
+  target_process uuid default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  changed_row record;
+begin
+  for changed_row in
+    update public.voter_pii_access_requests r
+    set status = case when r.status = 'ACTIVE' then 'SUSPENDED' else 'STALE' end,
+        resolved_at = now()
+    where r.organization_id = target_org
+      and r.recipient_user_id = target_user
+      and (target_event is null or r.event_id = target_event)
+      and (
+        target_process is null
+        or (r.scope_type = 'PROCESS' and r.process_id = target_process)
+      )
+      and r.status in ('ACTIVE', 'PENDING')
+    returning r.id, r.event_id, r.process_id, r.scope_type,
+              r.assurance_tier, r.status
+  loop
+    insert into public.audit_events (
+      organization_id, actor_user_id, action, resource_type, resource_id, event_data
+    )
+    values (
+      target_org,
+      private.current_app_user_id(),
+      case when changed_row.status = 'SUSPENDED'
+        then 'VOTER_PII_ACCESS_SUSPENDED'
+        else 'VOTER_PII_ACCESS_REQUEST_STALE' end,
+      'voter_pii_access_request',
+      changed_row.id::text,
+      jsonb_build_object(
+        'event_id', changed_row.event_id,
+        'process_id', changed_row.process_id,
+        'scope_type', changed_row.scope_type,
+        'recipient_user_id', target_user,
+        'approved_tier', changed_row.assurance_tier,
+        'reason', target_reason
+      )
+    );
+  end loop;
+end;
+$function$;
+
+create or replace function private.suspend_voter_pii_grants_on_membership_status_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if old.status = 'ACTIVE' and new.status <> 'ACTIVE' then
+    perform private.suspend_voter_pii_grants_for_recipient(
+      new.organization_id,
+      new.user_id,
+      'Recipient organization membership became inactive'
+    );
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists organization_memberships_suspend_voter_pii_grants
+  on public.organization_memberships;
+create trigger organization_memberships_suspend_voter_pii_grants
+after update of status on public.organization_memberships
+for each row execute function private.suspend_voter_pii_grants_on_membership_status_change();
+
+create or replace function private.suspend_voter_pii_grants_on_event_assignment_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if old.status = 'ACTIVE'
+     and (
+       new.status <> 'ACTIVE'
+       or new.role not in ('ELECTION_MANAGER', 'AUDITOR')
+       or (new.expires_at is not null and new.expires_at <= now())
+     ) then
+    perform private.suspend_voter_pii_grants_for_recipient(
+      new.organization_id,
+      new.user_id,
+      'Recipient event-scoped ELECTION_MANAGER or AUDITOR assignment became inactive',
+      new.event_id
+    );
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists event_role_assignments_suspend_voter_pii_grants
+  on public.event_role_assignments;
+create trigger event_role_assignments_suspend_voter_pii_grants
+after update of status, role, expires_at on public.event_role_assignments
+for each row execute function private.suspend_voter_pii_grants_on_event_assignment_change();
+
+create or replace function private.suspend_voter_pii_grants_on_process_assignment_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if old.status = 'ACTIVE'
+     and (
+       new.status <> 'ACTIVE'
+       or new.role not in ('ELECTION_MANAGER', 'AUDITOR')
+       or (new.expires_at is not null and new.expires_at <= now())
+     ) then
+    perform private.suspend_voter_pii_grants_for_recipient(
+      new.organization_id,
+      new.user_id,
+      'Recipient process-scoped ELECTION_MANAGER or AUDITOR assignment became inactive',
+      new.event_id,
+      new.process_id
+    );
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists process_role_assignments_suspend_voter_pii_grants
+  on public.process_role_assignments;
+create trigger process_role_assignments_suspend_voter_pii_grants
+after update of status, role, expires_at on public.process_role_assignments
+for each row execute function private.suspend_voter_pii_grants_on_process_assignment_change();
+
+revoke all on function private.suspend_voter_pii_grants_for_recipient(uuid, uuid, text, uuid, uuid)
+  from public, anon, authenticated;
+revoke all on function private.suspend_voter_pii_grants_on_membership_status_change()
+  from public, anon, authenticated;
+revoke all on function private.suspend_voter_pii_grants_on_event_assignment_change()
+  from public, anon, authenticated;
+revoke all on function private.suspend_voter_pii_grants_on_process_assignment_change()
+  from public, anon, authenticated;
+
 create or replace function public.request_voter_pii_access(
   target_scope text,
   target_event uuid,
