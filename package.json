@@ -10,7 +10,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/paystack.test.mjs"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.33.0",
