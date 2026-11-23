@@ -1,6 +1,6 @@
 # Organization membership and authorization design
 
-Status: **Proposed implementation baseline — pending product-owner review**  
+Status: **Proposed implementation baseline; multiple active owners decision accepted**  
 Date: 2026-11-23
 
 ## 1. Purpose and scope
@@ -13,14 +13,16 @@ This design covers organization membership, invitations, role assignment, worksp
 
 1. A person has one global application identity, keyed by the immutable Auth0 `sub` and mapped to `app_users.id`.
 2. A person may have memberships in multiple organizations. Each membership is scoped to exactly one organization.
-3. Email is a mutable contact/ invitation attribute, never the identity key or proof of membership.
-4. A membership grants access only when its status is `ACTIVE`. `INVITED`, `SUSPENDED` and `REMOVED` grant no workspace access.
-5. Roles and permissions are authoritative in PostgreSQL. Never accept role, organization ID, or permissions from client-controlled metadata or JWT custom claims.
-6. Every organization-owned record is accessed through a verified organization scope. A client-supplied organization ID is only a selector; it is never proof of access.
-7. Server-side authorization and database RLS both enforce tenant boundaries. UI hiding is not authorization.
-8. Organization membership never makes a person eligible to vote automatically. Voter eligibility is a separate, process-scoped record.
-9. Auditors and observers are read-only. Neither can modify registers, process configuration, ballots, results, or audit evidence.
-10. Secret ballot content is never exposed through ordinary organization administration, audit, observer or support interfaces.
+3. An organization may have multiple active OWNER memberships.
+4. Every organization must retain at least one active OWNER. The last active OWNER cannot be suspended, removed, demoted or transferred away until another OWNER has been made active.
+5. Email is a mutable contact/invitation attribute, never the identity key or proof of membership.
+6. A membership grants access only when its status is `ACTIVE`. `INVITED`, `SUSPENDED` and `REMOVED` grant no workspace access.
+7. Roles and permissions are authoritative in PostgreSQL. Never accept role, organization ID, or permissions from client-controlled metadata or JWT custom claims.
+8. Every organization-owned record is accessed through a verified organization scope. A client-supplied organization ID is only a selector; it is never proof of access.
+9. Server-side authorization and database RLS both enforce tenant boundaries. UI hiding is not authorization.
+10. Organization membership never makes a person eligible to vote automatically. Voter eligibility is a separate, process-scoped record.
+11. Auditors and observers are read-only. Neither can modify registers, process configuration, ballots, results, or audit evidence.
+12. Secret ballot content is never exposed through ordinary organization administration, audit, observer or support interfaces.
 
 ## 3. Initial organization roles
 
@@ -47,8 +49,8 @@ The database currently defines: `OWNER`, `ADMIN`, `ELECTION_MANAGER`, `AUDITOR`,
 
 ### Role interpretation
 
-- **OWNER**: ultimate organization-level control, including ownership transfer and organization closure subject to retention/legal-hold rules. Ownership transfer must be an explicit, re-authenticated workflow; never a normal role dropdown.
-- **ADMIN**: day-to-day workspace and member administration. Cannot take ownership, remove the owner, bypass separation-of-duties controls or unilaterally certify high-assurance results.
+- **OWNER**: organization-level governance authority. An organization can have multiple active owners. Each owner can invite another owner only through an explicit, re-authenticated and audited ownership-governance workflow. The last active owner cannot be removed, suspended or demoted. Organization closure remains subject to retention/legal-hold rules.
+- **ADMIN**: day-to-day workspace and member administration. Cannot take ownership, remove/demote owners, bypass separation-of-duties controls or unilaterally certify high-assurance results.
 - **ELECTION_MANAGER**: prepares and operates voting events/processes and voter registers within assigned scope. Cannot approve their own sensitive configuration or certify results.
 - **AUDITOR**: read-only access to explicitly assigned process evidence, audit trails and permitted reports. Access to personal data is separately granted and minimized.
 - **OBSERVER**: read-only access to a deliberately limited observer view and published evidence. No voter PII, hidden configuration, ballot content or write capability.
@@ -57,7 +59,7 @@ The database currently defines: `OWNER`, `ADMIN`, `ELECTION_MANAGER`, `AUDITOR`,
 
 ## 4. Invitations and membership lifecycle
 
-1. An OWNER or ADMIN submits an invitation for an email address, organization, proposed role and optional expiry.
+1. An OWNER or ADMIN submits an invitation for an email address, organization, proposed role and optional expiry. ADMIN cannot invite or assign OWNER/ADMIN roles.
 2. The platform stores a pending invitation with a cryptographically random, single-use token hash, expiry, inviter and audit event. Do not store the raw token.
 3. The invitee authenticates through Auth0. The invitation is bound to the authenticated account only after the invitation acceptance policy verifies the intended address or an approved alternate verification process.
 4. The membership references the internal `app_users.id`, not email.
@@ -125,7 +127,9 @@ The actor who prepares a sensitive change cannot approve that same change. The e
 - A user belonging to A and B can access each only when the request explicitly selects a workspace and active membership is rechecked.
 - Email changes do not change identity or transfer memberships.
 - A client cannot elevate its role by changing request JSON, headers, query parameters, local storage or Auth0 profile metadata.
-- ADMIN cannot remove/replace OWNER or transfer ownership.
+- ADMIN cannot assign/remove OWNER or ADMIN, and cannot remove/demote an owner.
+- The system permits multiple active OWNER memberships.
+- The last active OWNER cannot be suspended, removed, demoted or transferred away.
 - ELECTION_MANAGER cannot approve their own sensitive process change.
 - AUDITOR and OBSERVER cannot write, and their data views do not expose ballot choices.
 - BILLING_MANAGER cannot read voter registers or election records.
@@ -135,11 +139,10 @@ The actor who prepares a sensitive change cannot approve that same change. The e
 
 ## 10. Open decisions before implementation
 
-1. Whether the organization may have multiple OWNER memberships, or exactly one active OWNER at all times.
-2. Whether ADMIN may manage other ADMIN memberships, or only ordinary roles.
-3. Whether role assignment can be customized per voting event/process in the first release, or remains organization-wide initially.
-4. Whether invitations are email-only initially and which verification rule is required when the Auth0 email is unverified.
-5. Which actions require two-person approval at each assurance tier.
-6. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
+1. Whether ADMIN may manage other ADMIN memberships, or only ordinary roles.
+2. Whether role assignment can be customized per voting event/process in the first release, or remains organization-wide initially.
+3. Whether invitations are email-only initially and which verification rule is required when the Auth0 email is unverified.
+4. Which actions require two-person approval at each assurance tier.
+5. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
 
-Until these decisions are reviewed, this document is a design proposal, not authorization to silently change production schema or permissions.
+The multiple-active-OWNER decision is accepted. The rest of this document remains a design proposal, not authorization to silently change production schema or permissions.
