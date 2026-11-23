@@ -1,6 +1,6 @@
 # Organization membership and authorization design
 
-Status: **Proposed implementation baseline; multiple active owners, owner-only ADMIN governance, and event- and process-scoped assignments limited to ELECTION_MANAGER, AUDITOR, and OBSERVER accepted**  
+Status: **Proposed implementation baseline; multiple active owners, owner-only ADMIN governance, event- and process-scoped assignments limited to ELECTION_MANAGER, AUDITOR, and OBSERVER, and OWNER/ADMIN authority to manage scoped assignments accepted**  
 Date: 2026-11-23
 
 ## 1. Purpose and scope
@@ -154,11 +154,21 @@ The actor who prepares a sensitive change cannot approve that same change. The e
 - Every membership/role change produces an attributable audit event.
 - RLS remains effective when APIs are called directly, bypassing the UI.
 
-## 10. Open decisions before implementation
+## 10. Accepted scoped-role assignment governance
+
+- Both active `OWNER` and `ADMIN` members may assign, change and revoke event- and process-scoped roles.
+- They may assign only `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER` at those scopes.
+- `ADMIN` cannot assign, change or revoke organization-level `OWNER` or `ADMIN` memberships. Only `OWNER` may appoint, change or remove an `ADMIN`, through the organization-level governance workflow.
+- Scoped-role assignment authority is itself subordinate to the actor's active organization membership and the selected organization's authority. An event assignment must belong to that organization and event; a process assignment must belong to that organization and its parent event.
+- Every scoped-role assignment, change and revocation must be audited with the actor, affected member, role, organization, event/process scope, action and timestamp. Record the before/after state where applicable.
+- Assignment and revocation operations must be atomic with their audit record. Reject invalid role/scope combinations and inactive memberships; fail closed when scope ownership or authorization cannot be established.
+- These assignment-management rights do not give an assignee permissions beyond their own organization-level authority. Process-level assignments can only narrow applicable event-level permissions.
+
+## 11. Open decisions before implementation
 
 1. Which individual capabilities within the three approved scoped roles can be delegated at event and process scope, and whether any additional approval is required for those assignments.
 2. Whether invitations are email-only initially and which verification rule is required when the Auth0 email is unverified.
 3. Which actions require two-person approval at each assurance tier.
 4. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
 
-The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, and restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER` are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
+The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, and OWNER/ADMIN authority to manage those scoped assignments are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
