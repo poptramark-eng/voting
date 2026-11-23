@@ -34,7 +34,7 @@ Status: modular-monolith decision accepted; detailed domain design in progress.
 - Hosting: Vercel for the Next.js application and bounded request handlers.
 - Cache: Redis is deferred until a measured need exists. It is not authoritative storage.
 - Background work: PostgreSQL transactional outbox first; add a queue/worker only when justified.
-- Auth0/Supabase identity mapping is implemented in migration `20261123160000_auth0_identity_mapping.sql`. Provider-side configuration and first-login provisioning remain to be completed.
+- Auth0/Supabase identity mapping is implemented in migration `20261123144400_auth0_identity_mapping.sql`. Provider-side configuration and first-login provisioning remain to be completed.
 
 ## Delivery sequence
 
