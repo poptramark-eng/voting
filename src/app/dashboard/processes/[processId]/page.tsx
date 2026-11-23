@@ -8,6 +8,7 @@ type PageProps = { params: Promise<{ processId: string }> };
 
 type BallotItem = {
   id: string;
+  contest_id: string;
   item_type: string;
   label: string;
   description: string | null;
