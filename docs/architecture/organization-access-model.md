@@ -69,12 +69,17 @@ Organization roles are the baseline. Only `ELECTION_MANAGER`, `AUDITOR`, and `OB
 
 1. An OWNER or ADMIN submits an invitation for an email address, organization, proposed role and optional expiry. ADMIN cannot invite or assign OWNER/ADMIN roles.
 2. The platform stores a pending invitation with a cryptographically random, single-use token hash, expiry, inviter and audit event. Do not store the raw token.
-3. The invitee authenticates through Auth0. The invitation is bound to the authenticated account only after the invitation acceptance policy verifies the intended address or an approved alternate verification process.
+3. The invitee authenticates through Auth0. The invitation may be accepted only when the authenticated Auth0 email is verified (`email_verified = true`) and exactly matches the invited email address. If the Auth0 email is unverified, require verification before acceptance; do not treat a successful login alone as email verification.
 4. The membership references the internal `app_users.id`, not email.
 5. Acceptance transitions `INVITED -> ACTIVE` atomically and records who accepted and when.
 6. Expiry/revocation transitions an invitation to a non-authorizing state. A suspended or removed membership cannot access the workspace.
 7. Role changes and membership status changes are audited. Sensitive role changes require re-authentication and may require a second approver under the assurance policy.
 8. Re-inviting an existing global identity adds a new organization membership; it must not create a duplicate `app_users` identity.
+9. Invitations expire after a configurable period; the initial default is seven days. Expired invitations cannot be accepted and must be reissued.
+10. An invitation token is single-use. Store only a cryptographic hash of the high-entropy random token; never store the raw token. Acceptance must atomically consume the invitation and activate the membership.
+11. If the authenticated account's email differs from the invited address, do not transfer or accept the invitation automatically. Require a new invitation to the verified address or an explicit secure reissue by an authorized organization member.
+12. Resend is the selected transactional email delivery provider for organization invitations and invitation-related verification messages. Resend delivers messages; the application/Auth0 verification state remains authoritative for proving the invitee controls the invited address. Configure and verify a dedicated sending domain before production delivery.
+13. Invitation email sends must be idempotent per invitation/send attempt, with retry-safe handling for transient provider failures and auditable delivery status. Provider delivery or click/open events do not activate membership; only the authenticated, verified, single-use acceptance flow does.
 
 ## 5. Authorization architecture
 
@@ -142,6 +147,12 @@ The actor who prepares a sensitive change cannot approve that same change. The e
 - A process-level assignment is limited to its parent event and process, and can only narrow the effective event-level permissions.
 - Conflicting or missing scoped assignments fail closed; they do not fall back to broader access.
 - Email changes do not change identity or transfer memberships.
+- An invitation cannot be accepted unless the authenticated Auth0 email is verified and exactly matches the invited email.
+- An unverified Auth0 email cannot satisfy invitation acceptance, even after successful authentication.
+- An invitation addressed to a different email cannot be accepted by the current authenticated account; it must be securely reissued.
+- An expired invitation cannot be accepted; the initial default expiry is seven days unless configured otherwise.
+- An invitation token can be consumed only once, and only its cryptographic hash is stored.
+- Resend delivery, retries, opens or clicks do not activate a membership; acceptance must pass the application authorization checks.
 - A client cannot elevate its role by changing request JSON, headers, query parameters, local storage or Auth0 profile metadata.
 - ADMIN cannot assign/remove OWNER or ADMIN, cannot invite ADMIN, and cannot remove/demote an owner or another ADMIN.
 - OWNER can appoint/change/remove ADMIN through the audited governance workflow.
@@ -243,8 +254,7 @@ The maximum lifetime of a voter-identifying data grant is determined by the high
 
 ## 13. Open decisions before implementation
 
-1. Whether invitations are email-only initially and which verification rule is required when the Auth0 email is unverified.
-2. Which actions require two-person approval at each assurance tier beyond voter-identifying data grants.
-3. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
+1. Which actions require two-person approval at each assurance tier beyond voter-identifying data grants.
+2. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
 
-The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12, the assurance-tiered approval thresholds, and the tier-based maximum grant lifetimes and re-authorization rules in Section 12 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
+The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12, the assurance-tiered approval thresholds, and the tier-based maximum grant lifetimes and re-authorization rules in Section 12, the verified-email invitation acceptance policy, seven-day default invitation expiry, single-use hashed invitation tokens, and Resend as the transactional invitation email provider in Section 4 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
