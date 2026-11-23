@@ -51,6 +51,12 @@ test("scoped PII access fails closed when assignment or assurance no longer cove
   assert.match(migration, /r\.expires_at > now\(\)/);
 });
 
+test("a previous approver who loses active OWNER or ADMIN status invalidates pending activation", () => {
+  assert.match(migration, /A prior approver is no longer an active organization OWNER or ADMIN/);
+  assert.match(migration, /m\.status = 'ACTIVE'/);
+  assert.match(migration, /m\.role in \('OWNER', 'ADMIN'\)/);
+});
+
 test("all public SECURITY DEFINER workflow RPCs revoke PUBLIC and anon execution", () => {
   for (const name of [
     "request_voter_pii_access",
