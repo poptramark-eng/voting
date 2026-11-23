@@ -44,7 +44,7 @@ export function OrganizationMembers({
   const [invitations, setInvitations] = useState(initialInvitations);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [email, setEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<Invitation["role"]>(isOwner ? "MEMBER" : "MEMBER");
+  const [inviteRole, setInviteRole] = useState<Invitation["role"]>("MEMBER");
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
@@ -71,7 +71,10 @@ export function OrganizationMembers({
   function setDraft(member: Member, patch: Partial<Draft>) {
     setDrafts((current) => ({
       ...current,
-      [member.user_id]: { ...draftFor(member), ...patch },
+      [member.user_id]: {
+        ...(current[member.user_id] ?? { role: member.role, status: member.status }),
+        ...patch,
+      },
     }));
   }
 
