@@ -138,7 +138,9 @@ export async function POST(request: Request) {
     const { data, error } = await supabase.rpc("request_voter_pii_access", {
       target_scope: scope,
       target_event: eventId,
-      target_process: typeof processId === "string" ? processId : null,
+      // Supabase's generated RPC type models UUID arguments as non-nullable strings,
+      // while this SQL function intentionally accepts NULL for event-scoped requests.
+      target_process: (typeof processId === "string" ? processId : null) as string,
       target_recipient: recipientUserId,
       target_categories: requestedCategories,
       target_purpose: purpose.trim(),

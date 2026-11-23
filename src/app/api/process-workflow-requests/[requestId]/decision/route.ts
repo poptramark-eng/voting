@@ -42,7 +42,7 @@ export async function POST(request: Request, context: RouteContext) {
     const { data, error } = await supabase.rpc("approve_process_workflow_request", {
       target_request: requestId,
       decision,
-      comment: typeof comment === "string" ? comment.trim() || null : null,
+      comment: typeof comment === "string" ? comment.trim() || undefined : undefined,
     });
 
     if (error) {
