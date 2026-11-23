@@ -48,16 +48,21 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
   if (!membership) notFound();
 
   const [{ data: eventAssignment }, { data: processAssignment }] = await Promise.all([
-    supabase.from("event_role_assignments").select("id, expires_at")
+    supabase.from("event_role_assignments").select("id, role, status, expires_at")
       .eq("event_id", event.id).eq("user_id", appUser.id)
-      .eq("role", "ELECTION_MANAGER").eq("status", "ACTIVE").maybeSingle(),
-    supabase.from("process_role_assignments").select("id, expires_at")
-      .eq("process_id", processId).eq("user_id", appUser.id)
-      .eq("role", "ELECTION_MANAGER").eq("status", "ACTIVE").maybeSingle(),
+      .eq("role", "ELECTION_MANAGER").maybeSingle(),
+    supabase.from("process_role_assignments").select("id, role, status, expires_at")
+      .eq("process_id", processId).eq("user_id", appUser.id).maybeSingle(),
   ]);
 
   const canGovern = ["OWNER", "ADMIN"].includes(membership.role);
-  const canEdit = canGovern || Boolean(eventAssignment) || Boolean(processAssignment);
+  // Expiry is checked authoritatively by private.has_process_permission() in RLS.
+  const assignmentIsActive = (assignment: { status: string } | null) =>
+    Boolean(assignment && assignment.status === "ACTIVE");
+  const hasEventManagerRole = assignmentIsActive(eventAssignment);
+  const processRoleAllowsManagement = !processAssignment ||
+    (processAssignment.role === "ELECTION_MANAGER" && assignmentIsActive(processAssignment));
+  const canEdit = canGovern || (hasEventManagerRole && processRoleAllowsManagement);
 
   type GovernanceApproval = {
     decision: string;
