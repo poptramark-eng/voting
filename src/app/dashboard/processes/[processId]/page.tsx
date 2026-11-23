@@ -31,13 +31,18 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
     .eq("id", processId).maybeSingle();
   if (!process) notFound();
 
-  const [{ data: event }, { data: membership }] = await Promise.all([
-    supabase.from("voting_events").select("id, organization_id, title")
-      .eq("id", process.event_id).maybeSingle(),
-    supabase.from("organization_memberships").select("id, role")
-      .eq("user_id", appUser.id).eq("status", "ACTIVE").maybeSingle(),
-  ]);
-  if (!event || !membership) notFound();
+  const { data: event } = await supabase.from("voting_events")
+    .select("id, organization_id, title")
+    .eq("id", process.event_id).maybeSingle();
+  if (!event) notFound();
+
+  const { data: membership } = await supabase.from("organization_memberships")
+    .select("id, role")
+    .eq("organization_id", event.organization_id)
+    .eq("user_id", appUser.id)
+    .eq("status", "ACTIVE")
+    .maybeSingle();
+  if (!membership) notFound();
 
   const [{ data: eventAssignment }, { data: processAssignment }] = await Promise.all([
     supabase.from("event_role_assignments").select("id, expires_at")
