@@ -125,7 +125,7 @@ export function OrganizationMembers({
           userId: member.user_id,
           // Ownership changes are deliberately not offered here. A second active
           // OWNER must use the dedicated governance flow before this OWNER is removed.
-          role: member.role === "OWNER" ? "MEMBER" : draft.role,
+          role: member.role === "OWNER" ? "OWNER" : draft.role,
           status: draft.status,
         }),
       });
@@ -249,11 +249,12 @@ export function OrganizationMembers({
                   <label>
                     <span className="muted" style={{ display: "block", marginBottom: 4 }}>Role</span>
                     <select
-                      value={member.role === "OWNER" ? "MEMBER" : draft.role}
+                      value={member.role === "OWNER" ? "OWNER" : draft.role}
                       disabled={!canManageRow || member.role === "OWNER"}
                       onChange={(event) => setDraft(member, { role: event.target.value as Member["role"] })}
                       style={{ padding: 8, border: "1px solid var(--border, #d0d5dd)", borderRadius: 8 }}
                     >
+                      {member.role === "OWNER" && <option value="OWNER">Owner</option>}
                       <option value="MEMBER">Member</option>
                       <option value="BILLING_MANAGER">Billing manager</option>
                       {isOwner && <option value="ADMIN">Administrator</option>}
