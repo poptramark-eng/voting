@@ -1,0 +1,28 @@
+name: Paystack webhook inbox retry
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  retry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate scheduler configuration
+        env:
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$APP_BASE_URL" || (echo "Repository variable APP_BASE_URL is required" && exit 1)
+          test -n "$CRON_SECRET" || (echo "Repository secret CRON_SECRET is required" && exit 1)
+
+      - name: Process pending Paystack webhook events
+        env:
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error             --retry 3 --retry-delay 5 --max-time 45             -H "Authorization: Bearer $CRON_SECRET"             "$APP_BASE_URL/api/internal/payments/process-webhooks"

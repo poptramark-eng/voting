@@ -39,16 +39,18 @@ Status: modular-monolith decision accepted; identity boundary defined; implement
 - Auth0/Vercel integration: standard Auth0 tenant/application configuration stored in Vercel environment variables. Do not use the Vercel-native Auth0 integration by default because it provisions a new tenant/application.
 - Cache: Redis is deferred until a measured need exists. It is not authoritative storage.
 - Background work: PostgreSQL transactional outbox first; add a queue/worker only when justified.
-- Identity database migrations: `20261123144400_auth0_identity_mapping` and `20261123170000_remove_supabase_auth_foreign_keys_for_auth0`.
+- Identity database migrations are tracked in `supabase/migrations/`; verify hosted migration history before applying new migrations. The hosted project and repository currently have a migration-version naming mismatch that must be reconciled before deployment.
 
 ## Delivery sequence
 
 - Foundation: repository standards, domain model, tenancy, identity mapping, access-control tests, migrations and CI.
 - Authentication: provision Auth0 tenant/app, configure Supabase Third-Party Auth and ID-token claim, then implement server-validated session-to-database access.
-- Organization access: membership lifecycle, role-to-permission mapping, organization-scoped routing and tenant-isolation tests. See [organization access model](organization-access-model.md) (proposed; pending product-owner review).
-- Core voting: process configuration, voter register, eligibility, ballot lifecycle and deterministic tallying.
+- Organization access: accepted first-release built-in roles, membership governance, scoped assignments and tenant-isolation tests. See [organization access model](organization-access-model.md).
+- Voter-identifying data: purpose-bound, time-limited grants for ELECTION_MANAGER/AUDITOR with assurance-tiered OWNER/ADMIN approvals, field-level minimization and audited reads/exports. See [voter PII access](../security/voter-pii-access.md).
+- Process governance: initial lifecycle approval, emergency suspension, resumption and termination RPC/API foundation. See [process lifecycle](process-lifecycle.md). Schedule changes, automated opening/closure scheduling, voter-register finalization, recounts and result certification remain future work; scheduled opening/closure can currently be invoked by an authorized manager.
+- Core voting: process configuration, voter register, eligibility, ballot acceptance, cryptographic secrecy protocol and deterministic tallying. The voter PII grant and audited read/export foundation is implemented on the feature branch; a dedicated management UI and staging database tests remain. Ballot acceptance must not be implemented until the secrecy and verifiability protocol is independently reviewed.
 - Assurance: independent protocol review, audit evidence, verification and dispute workflows.
-- Operations: notifications, payment adapters, reporting, backups, monitoring and recovery.
+- Operations and billing: Paystack organization-billing checkout and webhook foundation. Subscription entitlement provisioning, refunds, settlement reconciliation, reports, backups, monitoring and recovery remain future work. See [Paystack integration](../payments/paystack-integration.md).
 - Expansion: mobile, offline, deeper integrations, dedicated tenancy and self-hosted operations.
 
 ## Architecture decisions still open
