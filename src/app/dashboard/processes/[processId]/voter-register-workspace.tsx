@@ -246,6 +246,8 @@ export function VoterRegisterWorkspace({
         </div>
       )}
 
+      {loadingRequests && (canGovern || canRequestPii) && <p className="muted" style={{ marginTop: 12 }}>Loading access requests…</p>}
+
       {canGovern && pendingRequests.length > 0 && (
         <div style={{ marginTop: 20 }}>
           <h4 style={{ fontSize: 16 }}>Pending voter PII approvals</h4>
