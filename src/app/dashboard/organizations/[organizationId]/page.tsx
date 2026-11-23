@@ -72,11 +72,7 @@ export default async function OrganizationWorkspacePage({ params }: PageProps) {
   if (canCreate) {
     const [{ data: memberRows, error: memberError }, { data: invitationRows, error: invitationError }] = await Promise.all([
       supabase.rpc("list_organization_members", { target_org: organizationId }),
-      supabase.from("organization_invitations")
-        .select("id,email,role,status,expires_at,created_at")
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false })
-        .limit(100),
+      supabase.rpc("list_organization_invitations", { target_org: organizationId }),
     ]);
 
     if (memberError || invitationError) {
