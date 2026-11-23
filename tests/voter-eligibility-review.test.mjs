@@ -41,3 +41,14 @@ test("public RPC wrapper is invoker-security and delegates to a private definer 
   assert.match(migration, /function public\.update_voter_register_eligibility\([\s\S]*?security invoker[\s\S]*?private\.update_voter_register_eligibility/);
   assert.match(migration, /revoke all on function public\.update_voter_register_eligibility\(uuid, uuid, text, text\)\s+from public, anon/);
 });
+
+const transitionFix = readFileSync(
+  new URL("../supabase/migrations/20261123225500_fix_voter_eligibility_transition_guard.sql", import.meta.url),
+  "utf8"
+);
+
+test("valid eligibility transitions pass and terminal transitions fail", () => {
+  assert.match(transitionFix, /current_status = 'PENDING' and target_status in \('ELIGIBLE', 'REJECTED'\)/);
+  assert.match(transitionFix, /current_status = 'ELIGIBLE' and target_status = 'REVOKED'/);
+  assert.match(transitionFix, /if not \([\s\S]*?\) then\s+raise exception 'This voter eligibility transition is not allowed'/);
+});
