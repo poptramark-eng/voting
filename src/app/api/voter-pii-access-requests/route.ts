@@ -34,8 +34,9 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const eventId = url.searchParams.get("eventId");
   const processId = url.searchParams.get("processId");
-  if ((!eventId && !processId) || (eventId && !isUuid(eventId)) || (processId && !isUuid(processId))) {
-    return NextResponse.json({ error: "Provide a valid eventId or processId." }, { status: 400 });
+  if ((!eventId && !processId) || (eventId && processId) ||
+      (eventId && !isUuid(eventId)) || (processId && !isUuid(processId))) {
+    return NextResponse.json({ error: "Provide exactly one valid eventId or processId." }, { status: 400 });
   }
 
   try {
@@ -46,8 +47,24 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false })
       .limit(100);
 
-    if (eventId) query = query.eq("event_id", eventId);
-    if (processId) query = query.eq("process_id", processId);
+    if (eventId) {
+      query = query.eq("event_id", eventId);
+    } else if (processId) {
+      const { data: process, error: processError } = await supabase
+        .from("voting_processes")
+        .select("event_id")
+        .eq("id", processId)
+        .maybeSingle();
+
+      if (processError || !process) {
+        return NextResponse.json({ error: "Voting process not found." }, { status: processError ? 500 : 404 });
+      }
+
+      // Include process-specific requests and event-wide grants that cover this process.
+      query = query.or(
+        `process_id.eq.${processId},and(scope_type.eq.EVENT,event_id.eq.${process.event_id})`
+      );
+    }
 
     const { data, error } = await query;
     if (error) {
