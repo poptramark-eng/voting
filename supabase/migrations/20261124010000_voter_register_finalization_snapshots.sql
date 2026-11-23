@@ -105,8 +105,11 @@ using (
 );
 
 -- This table contains copied voter PII for historical integrity. No API role receives
--- table privileges, and there is deliberately no SELECT policy.
+-- table privileges, and an explicit deny policy protects against future grants.
 revoke all on public.voter_register_snapshot_entries from public, anon, authenticated;
+create policy "no direct API access to voter snapshot PII"
+on public.voter_register_snapshot_entries for all to anon, authenticated
+using (false) with check (false);
 
 create or replace function private.guard_finalized_voter_register_mutation()
 returns trigger
@@ -189,7 +192,7 @@ create trigger voter_register_revision_tracker
 after insert or update or delete on public.voter_register_entries
 for each row execute function private.track_voter_register_revision();
 
-create or replace function public.request_voter_register_finalization(
+create or replace function private.request_voter_register_finalization_impl(
   target_process uuid,
   target_reason text
 )
@@ -422,7 +425,7 @@ begin
 end;
 $function$;
 
-create or replace function public.decide_voter_register_finalization(
+create or replace function private.decide_voter_register_finalization_impl(
   target_snapshot uuid,
   target_decision text,
   target_comment text default null
@@ -566,7 +569,7 @@ begin
 end;
 $function$;
 
-create or replace function public.reopen_voter_register_snapshot(
+create or replace function private.reopen_voter_register_snapshot_impl(
   target_snapshot uuid,
   target_reason text
 )
@@ -683,6 +686,52 @@ for each row execute function private.require_finalized_voter_register_before_su
 revoke all on function private.guard_finalized_voter_register_mutation() from public, anon, authenticated;
 revoke all on function private.track_voter_register_revision() from public, anon, authenticated;
 revoke all on function private.require_finalized_voter_register_before_submission() from public, anon, authenticated;
+
+revoke all on function private.request_voter_register_finalization_impl(uuid, text) from public, anon, authenticated;
+revoke all on function private.decide_voter_register_finalization_impl(uuid, text, text) from public, anon, authenticated;
+revoke all on function private.reopen_voter_register_snapshot_impl(uuid, text) from public, anon, authenticated;
+grant execute on function private.request_voter_register_finalization_impl(uuid, text) to authenticated;
+grant execute on function private.decide_voter_register_finalization_impl(uuid, text, text) to authenticated;
+grant execute on function private.reopen_voter_register_snapshot_impl(uuid, text) to authenticated;
+
+create or replace function public.request_voter_register_finalization(
+  target_process uuid,
+  target_reason text
+)
+returns uuid
+language sql
+security invoker
+set search_path = ''
+as $function$
+  select private.request_voter_register_finalization_impl(target_process, target_reason);
+$function$;
+
+create or replace function public.decide_voter_register_finalization(
+  target_snapshot uuid,
+  target_decision text,
+  target_comment text default null
+)
+returns uuid
+language sql
+security invoker
+set search_path = ''
+as $function$
+  select private.decide_voter_register_finalization_impl(
+    target_snapshot, target_decision, target_comment
+  );
+$function$;
+
+create or replace function public.reopen_voter_register_snapshot(
+  target_snapshot uuid,
+  target_reason text
+)
+returns uuid
+language sql
+security invoker
+set search_path = ''
+as $function$
+  select private.reopen_voter_register_snapshot_impl(target_snapshot, target_reason);
+$function$;
 
 revoke all on function public.request_voter_register_finalization(uuid, text) from public, anon;
 revoke all on function public.decide_voter_register_finalization(uuid, text, text) from public, anon;
