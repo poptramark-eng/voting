@@ -633,6 +633,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_event_role: {
+        Args: {
+          target_event: string
+          target_user: string
+          target_role: Database["public"]["Enums"]["organization_member_role"]
+          target_expires_at?: string | null
+        }
+        Returns: string
+      }
+      assign_process_role: {
+        Args: {
+          target_process: string
+          target_user: string
+          target_role: Database["public"]["Enums"]["organization_member_role"]
+          target_expires_at?: string | null
+        }
+        Returns: string
+      }
+      revoke_event_role: {
+        Args: { target_event: string; target_user: string }
+        Returns: boolean
+      }
+      revoke_process_role: {
+        Args: { target_process: string; target_user: string }
+        Returns: boolean
+      }
       approve_process_workflow_request: {
         Args: { target_request: string; decision: string; comment?: string | null }
         Returns: string
