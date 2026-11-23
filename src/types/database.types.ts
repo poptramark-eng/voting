@@ -1195,6 +1195,17 @@ export type Database = {
         Args: { error_message: string; target_event_key: string }
         Returns: boolean
       }
+      list_organization_invitations: {
+        Args: { target_org: string }
+        Returns: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          role: Database["public"]["Enums"]["organization_member_role"]
+          status: string
+        }[]
+      }
       list_organization_members: {
         Args: { target_org: string }
         Returns: {
