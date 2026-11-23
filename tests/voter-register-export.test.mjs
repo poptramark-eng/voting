@@ -62,3 +62,104 @@ test("CSV export uses the union of columns and preserves CRLF separators", () =>
   );
   assert.equal(toCsv([]), "");
 });
+
+import { createVoterRegisterRouteHandlers } from "../src/lib/voter-register-route.ts";
+
+const validProcessId = "4a5e8855-c4f1-4a10-bdfb-8c68ec33d486";
+const routeContext = { params: Promise.resolve({ processId: validProcessId }) };
+
+test("route GET requires authentication before querying the register", async () => {
+  let calls = 0;
+  const handlers = createVoterRegisterRouteHandlers({
+    getSession: async () => null,
+    readRows: async () => { calls += 1; return { data: [], error: null }; },
+  });
+  const response = await handlers.GET(new Request("https://example.test/register"), routeContext);
+  assert.equal(response.status, 401);
+  assert.equal(calls, 0);
+});
+
+test("route GET rejects malformed process IDs without calling the database", async () => {
+  let calls = 0;
+  const handlers = createVoterRegisterRouteHandlers({
+    getSession: async () => ({ user: { sub: "auth0|test" } }),
+    readRows: async () => { calls += 1; return { data: [], error: null }; },
+  });
+  const response = await handlers.GET(
+    new Request("https://example.test/register"),
+    { params: Promise.resolve({ processId: "not-a-uuid" }) },
+  );
+  assert.equal(response.status, 400);
+  assert.equal(calls, 0);
+});
+
+test("route GET requests one look-ahead row and reports exact final-page state", async () => {
+  let call;
+  const handlers = createVoterRegisterRouteHandlers({
+    getSession: async () => ({ user: { sub: "auth0|test" } }),
+    readRows: async (...args) => {
+      call = args;
+      return { data: [{ id: 1 }, { id: 2 }], error: null };
+    },
+  });
+  const response = await handlers.GET(
+    new Request("https://example.test/register?limit=2&offset=0"),
+    routeContext,
+  );
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.deepEqual(call, [validProcessId, "VIEW", 3, 0]);
+  assert.deepEqual(payload, {
+    rows: [{ id: 1 }, { id: 2 }],
+    limit: 2,
+    offset: 0,
+    hasMore: false,
+  });
+  assert.equal(response.headers.get("cache-control"), "no-store");
+});
+
+test("route POST exports only the requested rows and sets X-Has-More from look-ahead", async () => {
+  let call;
+  const handlers = createVoterRegisterRouteHandlers({
+    getSession: async () => ({ user: { sub: "auth0|test" } }),
+    readRows: async (...args) => {
+      call = args;
+      return {
+        data: [{ displayName: "=1+1" }, { displayName: "Normal" }],
+        error: null,
+      };
+    },
+  });
+  const response = await handlers.POST(
+    new Request("https://example.test/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ limit: 1, offset: 0 }),
+    }),
+    routeContext,
+  );
+  const csv = await response.text();
+  assert.equal(response.status, 200);
+  assert.deepEqual(call, [validProcessId, "EXPORT", 2, 0]);
+  assert.equal(csv, '"displayName"\\r\\n"\'=1+1"');
+  assert.equal(response.headers.get("x-has-more"), "true");
+  assert.equal(response.headers.get("cache-control"), "no-store");
+});
+
+test("route POST rejects invalid export pagination", async () => {
+  let calls = 0;
+  const handlers = createVoterRegisterRouteHandlers({
+    getSession: async () => ({ user: { sub: "auth0|test" } }),
+    readRows: async () => { calls += 1; return { data: [], error: null }; },
+  });
+  const response = await handlers.POST(
+    new Request("https://example.test/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ limit: 5000 }),
+    }),
+    routeContext,
+  );
+  assert.equal(response.status, 400);
+  assert.equal(calls, 0);
+});
