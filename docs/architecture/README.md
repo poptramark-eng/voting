@@ -39,7 +39,7 @@ Status: modular-monolith decision accepted; identity boundary defined; implement
 - Auth0/Vercel integration: standard Auth0 tenant/application configuration stored in Vercel environment variables. Do not use the Vercel-native Auth0 integration by default because it provisions a new tenant/application.
 - Cache: Redis is deferred until a measured need exists. It is not authoritative storage.
 - Background work: PostgreSQL transactional outbox first; add a queue/worker only when justified.
-- Identity database migrations: `20261123144400_auth0_identity_mapping` and `20261123170000_remove_supabase_auth_foreign_keys_for_auth0`.
+- Identity database migrations are tracked in `supabase/migrations/`; verify hosted migration history before applying new migrations. The hosted project and repository currently have a migration-version naming mismatch that must be reconciled before deployment.
 
 ## Delivery sequence
 
