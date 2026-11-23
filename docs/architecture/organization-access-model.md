@@ -375,3 +375,26 @@ Before production integration, validate the applicable Paystack country, currenc
 This records the provider direction; it does not authorize a production payment integration, database changes or changes to election permissions.
 
 The multiple-active-OWNER rule, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage scoped assignments, the default scoped-role permission matrix, separate purpose-specific and time-limited voter-identifying data authorization, assurance-tiered data-grant approvals and maximum lifetimes, verified-email invitation acceptance, seven-day default invitation expiry, single-use hashed invitation tokens, Resend as the transactional invitation email provider, assurance-tiered approval thresholds for sensitive operations, fixed built-in first-release roles with custom roles deferred, emergency suspension, assurance-tiered resumption and termination, and Paystack for organization platform billing are accepted decisions. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. These accepted decisions authorize the implementation described in the repository but do not authorize applying unreviewed migrations or deploying live payment processing. Any unimplemented details remain design work.
+
+
+## Implementation update — 2026-11-24
+
+The first organization membership administration slice is implemented and merged in PR #10.
+
+- The organization workspace exposes an OWNER/ADMIN-only member directory and membership role/status editor.
+- Organization invitations are seven-day, single-use links. The invitation token is 32 random bytes encoded as hex; only its SHA-256 hash is persisted. The raw token is returned once to the inviting administrator for copy/share.
+- Acceptance requires a signed-in Auth0 identity with `email_verified=true` and a case-insensitive match to the invitation email. Existing active/suspended/invited memberships are not invited again. A removed OWNER or ADMIN cannot be silently reactivated through a lower-role invitation; an OWNER must explicitly demote an ADMIN first, while ownership changes require the separate governance flow.
+- OWNER may appoint ADMIN. ADMIN cannot appoint/change/remove ADMIN or OWNER. Both may manage MEMBER and BILLING_MANAGER memberships. The last active OWNER is protected transactionally under an organization-row lock. Existing OWNER membership can be suspended/reactivated without changing its OWNER role.
+- Suspension/removal revokes all active event/process assignments. The existing membership-status trigger suspends voter-PII grants; reactivation does not restore revoked assignments or suspended grants.
+- Invitation token hashes are not directly exposed through the Data API. Authenticated/anon have no direct SELECT privilege on `organization_invitations`; an OWNER/ADMIN-authorized redacted listing RPC returns only invitation metadata. Public RPCs are SECURITY INVOKER wrappers; privileged implementation functions remain in the private schema with empty search paths.
+- The product decision still identifies Resend as the transactional email provider, but this implementation does not send email. The invitation link is copied and shared out-of-band until a separate email-delivery integration is implemented and configured.
+- Staging validation verified invitation acceptance, one-time token behavior, verified-email matching, ADMIN restrictions, last-owner protection, OWNER reactivation, scoped-assignment revocation on suspension, and direct token-hash inaccessibility. All fixtures were rolled back.
+- The staging project has 22 migrations, exactly matching the 22 migration filenames merged into the repository. No production schema/data changes were made.
+
+## Deferred implementation
+
+- Dedicated ownership transfer/appointment governance flow.
+- Resend delivery, delivery retry/outbox, invitation email templates and provider webhook reconciliation.
+- Fine-grained role change approval/re-authentication for higher-assurance organizations.
+- Event/process scoped role administration UI and expiry-aware effective-role display.
+- Member directory/API integration tests using actual Auth0 HTTP sessions.
