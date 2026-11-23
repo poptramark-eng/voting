@@ -277,8 +277,24 @@ The following approval matrix is the accepted default for sensitive operations. 
 
 These controls are the default approval policy for the listed operations. They do not grant lifecycle-transition permissions to scoped roles or override the separate voter-identifying-data grant policy in Section 12. Emergency suspension and other unlisted actions require their own explicit policy rather than an inferred exception.
 
-## 14. Open decisions before implementation
+## 14. First-release role strategy
 
-1. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
+**Accepted decision:** The first release will use fixed built-in roles. Custom organization roles are deferred until validated customer requirements justify the additional complexity; this is a deferral, not a permanent exclusion.
 
-The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12, the assurance-tiered approval thresholds, and the tier-based maximum grant lifetimes and re-authorization rules in Section 12, the verified-email invitation acceptance policy, seven-day default invitation expiry, single-use hashed invitation tokens, and Resend as the transactional invitation email provider in Section 4, and the assurance-tiered approval matrix and safeguards for sensitive operations in Section 13 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
+The initial built-in role set is:
+
+- `OWNER`
+- `ADMIN`
+- `ELECTION_MANAGER`
+- `AUDITOR`
+- `OBSERVER`
+- `BILLING_MANAGER`
+- `MEMBER`
+
+Authorization checks should use explicit permission identifiers and centralized role-to-permission mappings rather than scattering role-name checks throughout application code. This keeps policy reviewable and allows a future custom-role capability without redesigning every authorization check.
+
+The existing scope rules remain in force: `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` are organization-level roles; `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER` may also be assigned at event or process scope under the constraints in Section 10. Scoped assignments do not replace or elevate organization membership authority.
+
+No custom-role editor, custom permission grants, or database changes are authorized by this decision.
+
+The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12, the assurance-tiered approval thresholds, and the tier-based maximum grant lifetimes and re-authorization rules in Section 12, the verified-email invitation acceptance policy, seven-day default invitation expiry, single-use hashed invitation tokens, and Resend as the transactional invitation email provider in Section 4, the assurance-tiered approval matrix and safeguards for sensitive operations in Section 13, and the fixed built-in role strategy for the first release with custom roles deferred as described in Section 14 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
