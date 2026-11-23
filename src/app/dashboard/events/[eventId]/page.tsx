@@ -84,7 +84,10 @@ export default async function EventWorkspacePage({ params }: PageProps) {
                   <p className="muted">{labels[process.ballot_format] ?? process.ballot_format} · {process.eligibility_mode.replaceAll("_", " ")}</p>
                   <p className="muted">{process.opens_at ? new Date(process.opens_at).toLocaleString() : "Not scheduled"} – {process.closes_at ? new Date(process.closes_at).toLocaleString() : "Not scheduled"}</p>
                 </div>
-                <strong>{process.status.replaceAll("_", " ")}</strong>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <strong>{process.status.replaceAll("_", " ")}</strong>
+                  <Link className="button secondary" href={`/dashboard/processes/${process.id}`}>Configure ballot</Link>
+                </div>
               </article>
             ))}
           </div>
