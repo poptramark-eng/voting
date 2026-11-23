@@ -11,7 +11,6 @@ const categories: VotingCategory[] = [
   "GENERAL_POLL",
   "CONTEST",
   "ORGANIZATIONAL_ELECTION",
-  "PUBLIC_ELECTION",
 ];
 const tiers: AssuranceTier[] = ["STANDARD", "ENHANCED", "HIGH", "CRITICAL"];
 
