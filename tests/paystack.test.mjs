@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   createWebhookEventKey,
+  getPaystackPrice,
   verifyPaystackWebhookSignature,
 } from "../src/lib/payments/paystack.ts";
 
@@ -78,6 +79,28 @@ test("supports the legacy X-Paystack-Signature header", () => {
   const headers = new Headers({ "X-Paystack-Signature": signature });
 
   assert.equal(verifyPaystackWebhookSignature(rawBody, headers), true);
+});
+
+test("loads a valid Kenya price catalog entry", () => {
+  process.env.PAYSTACK_PRICE_CATALOG_JSON = JSON.stringify({
+    "org-monthly": { amountMinor: 10000, currency: "KES", description: "Monthly organization plan" },
+  });
+
+  assert.deepEqual(getPaystackPrice("org-monthly"), {
+    amountMinor: 10000,
+    currency: "KES",
+    description: "Monthly organization plan",
+  });
+});
+
+test("rejects unsupported merchant currencies and below-minimum prices", () => {
+  process.env.PAYSTACK_PRICE_CATALOG_JSON = JSON.stringify({
+    "unsupported": { amountMinor: 10000, currency: "NGN", description: "Unsupported market" },
+    "below-minimum": { amountMinor: 299, currency: "KES", description: "Below KES minimum" },
+  });
+
+  assert.throws(() => getPaystackPrice("unsupported"), /PAYSTACK_PRICE_CATALOG_INVALID/);
+  assert.throws(() => getPaystackPrice("below-minimum"), /PAYSTACK_PRICE_CATALOG_INVALID/);
 });
 
 test("creates a deterministic SHA-256 webhook event key", () => {
