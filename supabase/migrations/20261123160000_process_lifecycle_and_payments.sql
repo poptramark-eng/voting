@@ -243,6 +243,125 @@ using (
   )
 );
 
+
+create table private.scoped_role_permissions (
+  role public.organization_member_role not null
+    check (role in ('ELECTION_MANAGER', 'AUDITOR', 'OBSERVER')),
+  permission text not null,
+  primary key (role, permission)
+);
+
+insert into private.scoped_role_permissions (role, permission) values
+  ('ELECTION_MANAGER', 'event.read'),
+  ('ELECTION_MANAGER', 'event.update'),
+  ('ELECTION_MANAGER', 'process.read'),
+  ('ELECTION_MANAGER', 'process.create'),
+  ('ELECTION_MANAGER', 'process.update'),
+  ('ELECTION_MANAGER', 'process.submit'),
+  ('ELECTION_MANAGER', 'contest.read'),
+  ('ELECTION_MANAGER', 'contest.manage'),
+  ('ELECTION_MANAGER', 'ballot_structure.read'),
+  ('ELECTION_MANAGER', 'ballot_structure.manage'),
+  ('AUDITOR', 'event.read'),
+  ('AUDITOR', 'process.read'),
+  ('AUDITOR', 'contest.read'),
+  ('AUDITOR', 'ballot_structure.read'),
+  ('AUDITOR', 'audit.read'),
+  ('OBSERVER', 'event.read'),
+  ('OBSERVER', 'process.read'),
+  ('OBSERVER', 'contest.read'),
+  ('OBSERVER', 'observer.status.read');
+
+revoke all on private.scoped_role_permissions from public, anon, authenticated;
+
+create or replace function private.has_event_permission(
+  target_event uuid,
+  target_permission text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select exists (
+    select 1
+    from public.event_role_assignments a
+    join public.voting_events e on e.id = a.event_id
+    join public.organization_memberships m
+      on m.organization_id = e.organization_id
+     and m.user_id = a.user_id
+    join private.scoped_role_permissions rp
+      on rp.role = a.role
+     and rp.permission = target_permission
+    where a.event_id = target_event
+      and a.user_id = (select private.current_app_user_id())
+      and a.organization_id = e.organization_id
+      and a.status = 'ACTIVE'
+      and (a.expires_at is null or a.expires_at > now())
+      and m.status = 'ACTIVE'
+  );
+$function$;
+
+create or replace function private.has_process_permission(
+  target_process uuid,
+  target_permission text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select exists (
+    select 1
+    from public.voting_processes p
+    join public.voting_events e on e.id = p.event_id
+    join public.organization_memberships m
+      on m.organization_id = e.organization_id
+     and m.user_id = (select private.current_app_user_id())
+    join public.event_role_assignments ea
+      on ea.event_id = e.id
+     and ea.user_id = m.user_id
+    left join public.process_role_assignments pa
+      on pa.process_id = p.id
+     and pa.user_id = m.user_id
+    join private.scoped_role_permissions rp
+      on rp.role = case when pa.id is null then ea.role else pa.role end
+     and rp.permission = target_permission
+    where p.id = target_process
+      and ea.organization_id = e.organization_id
+      and m.status = 'ACTIVE'
+      and ea.status = 'ACTIVE'
+      and (ea.expires_at is null or ea.expires_at > now())
+      and (
+        pa.id is null
+        or (
+          pa.organization_id = e.organization_id
+          and pa.event_id = e.id
+          and pa.status = 'ACTIVE'
+          and (pa.expires_at is null or pa.expires_at > now())
+          and not exists (
+            select 1
+            from private.scoped_role_permissions target_permissions
+            where target_permissions.role = pa.role
+              and not exists (
+                select 1
+                from private.scoped_role_permissions event_permissions
+                where event_permissions.role = ea.role
+                  and event_permissions.permission = target_permissions.permission
+              )
+          )
+        )
+      )
+  );
+$function$;
+
+revoke all on function private.has_event_permission(uuid, text) from public, anon;
+revoke all on function private.has_process_permission(uuid, text) from public, anon;
+grant execute on function private.has_event_permission(uuid, text) to authenticated;
+grant execute on function private.has_process_permission(uuid, text) to authenticated;
+
 create or replace function private.scoped_role_rank(target_role public.organization_member_role)
 returns integer
 language sql
@@ -468,7 +587,17 @@ begin
   if event_role is null then
     raise exception 'A valid event-level role assignment is required before process-level narrowing' using errcode = '22023';
   end if;
-  if private.scoped_role_rank(target_role) > private.scoped_role_rank(event_role) then
+  if exists (
+    select 1
+    from private.scoped_role_permissions target_permissions
+    where target_permissions.role = target_role
+      and not exists (
+        select 1
+        from private.scoped_role_permissions event_permissions
+        where event_permissions.role = event_role
+          and event_permissions.permission = target_permissions.permission
+      )
+  ) then
     raise exception 'A process-level role cannot expand event-level permissions' using errcode = '42501';
   end if;
 
@@ -613,14 +742,14 @@ using (
   status = 'DRAFT'
   and (
     private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-    or private.has_event_role(id, array['ELECTION_MANAGER']::public.organization_member_role[])
+    or private.has_event_permission(id, 'event.update')
   )
 )
 with check (
   status = 'DRAFT'
   and (
     private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-    or private.has_event_role(id, array['ELECTION_MANAGER']::public.organization_member_role[])
+    or private.has_event_permission(id, 'event.update')
   )
 );
 
@@ -629,7 +758,7 @@ create policy "scoped members can read voting events"
 on public.voting_events for select to authenticated
 using (
   private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-  or private.has_event_role(id, array['ELECTION_MANAGER','AUDITOR','OBSERVER']::public.organization_member_role[])
+  or private.has_event_permission(id, 'event.read')
 );
 
 drop policy if exists "authorized managers can create voting processes" on public.voting_processes;
@@ -641,7 +770,7 @@ with check (
     where e.id = event_id
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_event_role(e.id, array['ELECTION_MANAGER']::public.organization_member_role[])
+        or private.has_event_permission(e.id, 'process.create')
       )
   )
   and created_by = (select private.current_app_user_id())
@@ -657,7 +786,7 @@ using (
     where e.id = event_id
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_role(id, array['ELECTION_MANAGER']::public.organization_member_role[])
+        or private.has_process_permission(id, 'process.update')
       )
   )
 )
@@ -668,7 +797,7 @@ with check (
     where e.id = event_id
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_role(id, array['ELECTION_MANAGER']::public.organization_member_role[])
+        or private.has_process_permission(id, 'process.update')
       )
   )
 );
@@ -682,7 +811,7 @@ using (
     where e.id = event_id
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_role(id, array['ELECTION_MANAGER','AUDITOR','OBSERVER']::public.organization_member_role[])
+        or private.has_process_permission(id, 'process.read')
       )
   )
 );
@@ -698,7 +827,7 @@ with check (
       and p.status = 'DRAFT'
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_role(p.id, array['ELECTION_MANAGER']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'contest.manage')
       )
   )
 );
@@ -714,7 +843,7 @@ using (
       and p.status = 'DRAFT'
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_role(p.id, array['ELECTION_MANAGER']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'contest.manage')
       )
   )
 )
@@ -726,7 +855,7 @@ with check (
       and p.status = 'DRAFT'
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_role(p.id, array['ELECTION_MANAGER']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'contest.manage')
       )
   )
 );
@@ -741,7 +870,7 @@ using (
     where p.id = process_id
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_role(p.id, array['ELECTION_MANAGER','AUDITOR','OBSERVER']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'contest.read')
       )
   )
 );
@@ -758,7 +887,7 @@ with check (
       and p.status = 'DRAFT'
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_role(p.id, array['ELECTION_MANAGER']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'contest.manage')
       )
   )
 );
@@ -775,7 +904,7 @@ using (
       and p.status = 'DRAFT'
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_role(p.id, array['ELECTION_MANAGER']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'contest.manage')
       )
   )
 )
@@ -788,7 +917,7 @@ with check (
       and p.status = 'DRAFT'
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_role(p.id, array['ELECTION_MANAGER']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'contest.manage')
       )
   )
 );
@@ -804,7 +933,7 @@ using (
     where c.id = contest_id
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_role(p.id, array['ELECTION_MANAGER','AUDITOR']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'ballot_structure.read')
       )
   )
 );
@@ -883,19 +1012,15 @@ to authenticated;
 create policy "governance roles can read process lifecycle events"
 on public.process_lifecycle_events for select to authenticated
 using (
-  private.has_org_role(
-    organization_id,
-    array['OWNER','ADMIN','AUDITOR']::public.organization_member_role[]
-  )
+  private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  or private.has_process_permission(process_id, 'audit.read')
 );
 
 create policy "governance roles can read process workflow requests"
 on public.process_workflow_requests for select to authenticated
 using (
-  private.has_org_role(
-    organization_id,
-    array['OWNER','ADMIN','AUDITOR']::public.organization_member_role[]
-  )
+  private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  or private.has_process_permission(process_id, 'audit.read')
 );
 
 create policy "governance roles can read process workflow approvals"
@@ -905,9 +1030,9 @@ using (
     select 1
     from public.process_workflow_requests r
     where r.id = request_id
-      and private.has_org_role(
-        r.organization_id,
-        array['OWNER','ADMIN','AUDITOR']::public.organization_member_role[]
+      and (
+        private.has_org_role(r.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(r.process_id, 'audit.read')
       )
   )
 );
@@ -986,9 +1111,9 @@ begin
     raise exception 'Voting process not found' using errcode = 'P0002';
   end if;
 
-  if not private.has_org_role(
-    organization_id,
-    array['OWNER','ADMIN','ELECTION_MANAGER']::public.organization_member_role[]
+  if not (
+    private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+    or private.has_process_permission(target_process, 'process.submit')
   ) then
     raise exception 'Insufficient permission to submit this process' using errcode = '42501';
   end if;
@@ -1887,7 +2012,7 @@ comment on table public.payment_transactions is
 comment on table public.payment_webhook_events is
   'Minimal idempotency ledger for verified Paystack webhook deliveries; raw webhook bodies are not stored.';
 
-    and private.has_process_role(resource_id::uuid, array['AUDITOR']::public.organization_member_role[])
+    and private.has_process_permission(resource_id::uuid, 'audit.read')
   )
   or (
     resource_type = 'voting_event'
@@ -2912,7 +3037,7 @@ comment on table public.payment_transactions is
 comment on table public.payment_webhook_events is
   'Minimal idempotency ledger for verified Paystack webhook deliveries; raw webhook bodies are not stored.';
 
-    and private.has_event_role(resource_id::uuid, array['AUDITOR']::public.organization_member_role[])
+    and private.has_event_permission(resource_id::uuid, 'audit.read')
   )
 );
 
