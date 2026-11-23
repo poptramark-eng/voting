@@ -518,12 +518,15 @@ begin
     raise exception 'Voting event not found' using errcode = 'P0002';
   end if;
 
-  if target_scope = 'PROCESS' and not exists (
-    select 1 from public.voting_processes p
+  if target_scope = 'PROCESS' then
+    perform 1
+    from public.voting_processes p
     where p.id = target_process and p.event_id = target_event
-    for update
-  ) then
-    raise exception 'Voting process does not belong to the requested event' using errcode = '22023';
+    for update;
+
+    if not found then
+      raise exception 'Voting process does not belong to the requested event' using errcode = '22023';
+    end if;
   end if;
 
   if target_recipient = caller_id then
