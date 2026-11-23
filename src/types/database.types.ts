@@ -428,24 +428,45 @@ export type Database = {
           provider: string
           event_type: string
           provider_reference: string | null
+          event_data: Json
+          status: string
+          attempt_count: number
+          last_error: string | null
+          next_attempt_at: string | null
+          processing_started_at: string | null
           received_at: string
           processed_at: string | null
+          updated_at: string
         }
         Insert: {
           event_key: string
           provider?: string
           event_type: string
           provider_reference?: string | null
+          event_data?: Json
+          status?: string
+          attempt_count?: number
+          last_error?: string | null
+          next_attempt_at?: string | null
+          processing_started_at?: string | null
           received_at?: string
           processed_at?: string | null
+          updated_at?: string
         }
         Update: {
           event_key?: string
           provider?: string
           event_type?: string
           provider_reference?: string | null
+          event_data?: Json
+          status?: string
+          attempt_count?: number
+          last_error?: string | null
+          next_attempt_at?: string | null
+          processing_started_at?: string | null
           received_at?: string
           processed_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
