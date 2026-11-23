@@ -107,7 +107,7 @@ test("route GET requests one look-ahead row and reports exact final-page state",
     routeContext,
   );
   const payload = await response.json();
-  assert.equal(response.status, 200, await response.clone().text());
+  assert.equal(response.status, 200);
   assert.deepEqual(call, [validProcessId, "VIEW", 3, 0]);
   assert.deepEqual(payload, {
     rows: [{ id: 1 }, { id: 2 }],
