@@ -53,13 +53,11 @@ export function getPaystackPrice(priceCode: string): PaystackPrice | null {
   const currency = entry.currency;
   const description = entry.description;
 
+  // Initial merchant market is Kenya: Paystack documents KES and USD for Kenya.
+  // Add currencies only after confirming the merchant account's settlement market.
   const minimumAmounts: Record<string, number> = {
     KES: 300,
     USD: 200,
-    NGN: 5000,
-    GHS: 10,
-    ZAR: 100,
-    XOF: 100,
   };
 
   if (
@@ -68,7 +66,6 @@ export function getPaystackPrice(priceCode: string): PaystackPrice | null {
     typeof currency !== "string" ||
     !(currency in minimumAmounts) ||
     amountMinor < minimumAmounts[currency] ||
-    amountMinor > 10_000_000 ||
     typeof description !== "string" ||
     description.trim().length < 2
   ) {
