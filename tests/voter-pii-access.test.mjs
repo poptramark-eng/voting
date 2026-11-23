@@ -55,7 +55,7 @@ test("assurance increases suspend active grants at event and process scope", () 
   assert.match(migration, /status in \('PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTED', 'REVOKED', 'STALE'\)/);
   assert.match(migration, /create trigger voting_processes_suspend_voter_pii_grants/);
   assert.match(migration, /create trigger voting_events_suspend_voter_pii_grants/);
-  assert.match(migration, /set status = 'SUSPENDED'/);
+  assert.match(migration, /set status = case when r\.status = 'ACTIVE' then 'SUSPENDED' else 'STALE' end/);
 });
 
 test("membership and scoped-assignment revocation suspend affected grants", () => {
