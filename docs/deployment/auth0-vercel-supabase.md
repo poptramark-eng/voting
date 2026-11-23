@@ -96,6 +96,14 @@ Do not install the Vercel-native Auth0 integration without a separate decision. 
 - No request can self-assign organization roles.
 - No tokens or credentials appear in logs, browser bundles, Git history or Notion.
 
+## Paystack server environment
+
+The billing API requires server-side `PAYSTACK_SECRET_KEY`, `PAYSTACK_WEBHOOK_SECRET`, `PAYSTACK_PRICE_CATALOG_JSON` and `SUPABASE_SERVICE_ROLE_KEY`, in addition to `APP_BASE_URL`. Configure them only in local server environment and Vercel server-side environment variables; never use a `NEXT_PUBLIC_` prefix for secrets. Begin with Paystack test credentials. The price catalog is server-controlled; clients submit only a price code and an idempotency key.
+
+Configure the Paystack webhook URL as `/api/webhooks/paystack`. Do not mark payments successful from the browser callback. Follow [Paystack integration](../payments/paystack-integration.md) for webhook signing, transaction verification and test steps.
+
+Do not deploy the lifecycle/payment migration until the mismatch between repository migration filenames and hosted Supabase migration history has been reconciled and the migration has been reviewed in staging.
+
 ## Cost and operational notes
 
 - Keep the initial architecture on the Supabase project already created and Vercel's existing available plan.
