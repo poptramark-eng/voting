@@ -913,11 +913,11 @@ revoke all on function public.request_voter_pii_access(
   text, uuid, uuid, uuid, text[], text, timestamptz
 ) from public, anon, authenticated;
 revoke all on function public.decide_voter_pii_access_request(uuid, text, text)
-  from public, anon;
+  from public, anon, authenticated;
 revoke all on function public.revoke_voter_pii_access(uuid, text)
-  from public, anon;
+  from public, anon, authenticated;
 revoke all on function public.read_voter_register_entries(uuid, text, integer, integer)
-  from public, anon;
+  from public, anon, authenticated;
 
 grant execute on function public.request_voter_pii_access(
   text, uuid, uuid, uuid, text[], text, timestamptz
