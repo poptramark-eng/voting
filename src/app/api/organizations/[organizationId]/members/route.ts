@@ -7,7 +7,8 @@ type RouteContext = { params: Promise<{ organizationId: string }> };
 type MemberRole = Database["public"]["Enums"]["organization_member_role"];
 type MemberStatus = Database["public"]["Enums"]["organization_member_status"];
 
-const assignableRoles: MemberRole[] = ["ADMIN", "BILLING_MANAGER", "MEMBER"];
+const invitationRoles: MemberRole[] = ["ADMIN", "BILLING_MANAGER", "MEMBER"];
+const membershipRoles: MemberRole[] = ["OWNER", "ADMIN", "BILLING_MANAGER", "MEMBER"];
 const manageableStatuses: MemberStatus[] = ["ACTIVE", "SUSPENDED", "REMOVED"];
 
 function isUuid(value: string): boolean {
@@ -92,7 +93,7 @@ export async function POST(request: Request, context: RouteContext) {
     email.length > 254 ||
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
     typeof role !== "string" ||
-    !assignableRoles.includes(role as MemberRole)
+    !invitationRoles.includes(role as MemberRole)
   ) {
     return NextResponse.json({ error: "Provide a valid email address and assignable role." }, { status: 400 });
   }
@@ -144,7 +145,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const status = body.status;
   if (
     typeof role !== "string" ||
-    !assignableRoles.includes(role as MemberRole) ||
+    !membershipRoles.includes(role as MemberRole) ||
     typeof status !== "string" ||
     !manageableStatuses.includes(status as MemberStatus)
   ) {
