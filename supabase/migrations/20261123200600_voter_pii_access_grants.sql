@@ -128,6 +128,9 @@ as $function$
   select exists (
     select 1
     from public.event_role_assignments a
+    join public.voting_events e
+      on e.id = a.event_id
+     and e.organization_id = a.organization_id
     join public.organization_memberships m
       on m.organization_id = a.organization_id
      and m.user_id = a.user_id
@@ -584,6 +587,36 @@ begin
       'voter_pii_access_request', request_row.id::text,
       jsonb_build_object('reason', 'Recipient no longer has an active process-scoped ELECTION_MANAGER or AUDITOR permission')
     );
+    return jsonb_build_object('requestId', request_row.id, 'status', 'STALE');
+  end if;
+
+  if target_decision = 'APPROVE' and exists (
+    select 1
+    from public.voter_pii_access_approvals a
+    where a.request_id = request_row.id
+      and a.decision = 'APPROVE'
+      and not exists (
+        select 1
+        from public.organization_memberships m
+        where m.organization_id = request_row.organization_id
+          and m.user_id = a.approver_user_id
+          and m.status = 'ACTIVE'
+          and m.role in ('OWNER', 'ADMIN')
+      )
+  ) then
+    update public.voter_pii_access_requests
+    set status = 'STALE', resolved_at = now()
+    where id = request_row.id;
+
+    insert into public.audit_events (
+      organization_id, actor_user_id, action, resource_type, resource_id, event_data
+    )
+    values (
+      request_row.organization_id, caller_id, 'VOTER_PII_ACCESS_REQUEST_STALE',
+      'voter_pii_access_request', request_row.id::text,
+      jsonb_build_object('reason', 'A prior approver is no longer an active organization OWNER or ADMIN')
+    );
+
     return jsonb_build_object('requestId', request_row.id, 'status', 'STALE');
   end if;
 
