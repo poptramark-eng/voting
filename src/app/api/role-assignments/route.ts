@@ -89,7 +89,7 @@ export async function POST(request: Request) {
           target_process: targetId,
           target_user: userId,
           target_role: role as ScopedRole,
-          target_expires_at: typeof expiresAt === "string" ? new Date(expiresAt).toISOString() : null,
+          target_expires_at: typeof expiresAt === "string" ? new Date(expiresAt).toISOString() : undefined,
         });
 
   if (result.error) {
