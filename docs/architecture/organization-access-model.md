@@ -1,6 +1,6 @@
 # Organization membership and authorization design
 
-Status: **Proposed implementation baseline; multiple active owners and owner-only ADMIN governance accepted**  
+Status: **Proposed implementation baseline; multiple active owners, owner-only ADMIN governance, and event-scoped role assignments accepted**  
 Date: 2026-11-23
 
 ## 1. Purpose and scope
@@ -25,6 +25,7 @@ This design covers organization membership, invitations, role assignment, worksp
 12. Organization membership never makes a person eligible to vote automatically. Voter eligibility is a separate, process-scoped record.
 13. Auditors and observers are read-only. Neither can modify registers, process configuration, ballots, results, or audit evidence.
 14. Secret ballot content is never exposed through ordinary organization administration, audit, observer or support interfaces.
+15. Organization roles establish the maximum authority a person may exercise in the workspace. A person may receive narrower, voting-event-specific assignments, but an event assignment cannot exceed or bypass their organization-level authority.
 
 ## 3. Initial organization roles
 
@@ -51,6 +52,8 @@ The database currently defines: `OWNER`, `ADMIN`, `ELECTION_MANAGER`, `AUDITOR`,
 | Export organization data | Scoped | Scoped | Process-scoped | Audit evidence only | Published subset | Billing records only | No |
 
 ### Role interpretation
+
+Organization roles are the baseline. The platform may grant a member narrower assignments for individual voting events or processes. For example, a person may be an `ELECTION_MANAGER` for one event and an `OBSERVER` for another. Event-scoped assignments must be explicitly recorded, organization- and event-bound, time/status-aware, auditable, and checked on every request. They can narrow access but cannot elevate a person beyond the permissions granted by their active organization membership. A user without active organization membership cannot gain access through an event assignment.
 
 - **OWNER**: organization-level governance authority. An organization can have multiple active owners. Each owner can appoint another owner or ADMIN only through an explicit, re-authenticated and audited governance workflow. The last active owner cannot be removed, suspended or demoted. Organization closure remains subject to retention/legal-hold rules.
 - **ADMIN**: day-to-day workspace and member administration. May manage ordinary members and operational roles only. Cannot appoint, change or remove ADMINs or OWNERs; cannot take ownership, bypass separation-of-duties controls or unilaterally certify high-assurance results.
@@ -85,7 +88,9 @@ The database currently defines: `OWNER`, `ADMIN`, `ELECTION_MANAGER`, `AUDITOR`,
 
 ### Enforcement requirements
 
-- Centralize checks in server-only application services such as `requireOrganizationAccess(orgId, permission)`; do not scatter role-string checks across UI components.
+- Centralize checks in server-only application services such as `requireOrganizationAccess(orgId, permission)` and `requireEventAccess(orgId, eventId, permission)`; do not scatter role-string checks across UI components.
+- Resolve effective event permissions as the intersection of the active organization-level permissions and the explicit event-scoped assignment. Event-scoped roles may narrow access only; they must never grant a capability absent from the user's organization-level authority.
+- Validate that the event belongs to the selected organization, the organization membership is ACTIVE, and the event assignment is active for the requested operation. Recheck these conditions server-side and in RLS/database functions where applicable.
 - Use permission identifiers (for example `organization.members.invite`, `organization.admins.manage`, `election.process.configure`, `voter_register.manage`, `audit.read`, `billing.manage`) as the application-facing contract.
 - Map the initial fixed roles to permission sets in trusted server/database code. Keep the role-to-permission map versioned and testable.
 - Keep RLS policies aligned with those permissions. For high-risk writes, prefer narrowly scoped database functions that validate actor, organization, state transition and separation-of-duties constraints.
@@ -128,6 +133,9 @@ The actor who prepares a sensitive change cannot approve that same change. The e
 - A user with an active membership in organization A cannot read or mutate organization B.
 - `INVITED`, `SUSPENDED` and `REMOVED` memberships cannot access organization data.
 - A user belonging to A and B can access each only when the request explicitly selects a workspace and active membership is rechecked.
+- An event-scoped assignment cannot grant access without an active organization membership.
+- An event-scoped assignment cannot grant permissions above the user's organization-level authority.
+- A user can hold different event-scoped roles in separate events without those assignments leaking across events or organizations.
 - Email changes do not change identity or transfer memberships.
 - A client cannot elevate its role by changing request JSON, headers, query parameters, local storage or Auth0 profile metadata.
 - ADMIN cannot assign/remove OWNER or ADMIN, cannot invite ADMIN, and cannot remove/demote an owner or another ADMIN.
@@ -143,9 +151,9 @@ The actor who prepares a sensitive change cannot approve that same change. The e
 
 ## 10. Open decisions before implementation
 
-1. Whether role assignment can be customized per voting event/process in the first release, or remains organization-wide initially.
+1. Whether event-scoped assignments apply at the voting-event level, process level, or both, and which roles/capabilities can be delegated.
 2. Whether invitations are email-only initially and which verification rule is required when the Auth0 email is unverified.
 3. Which actions require two-person approval at each assurance tier.
 4. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
 
-The multiple-active-OWNER and owner-only ADMIN governance decisions are accepted. The rest of this document remains a design proposal, not authorization to silently change production schema or permissions.
+The multiple-active-OWNER, owner-only ADMIN governance, and event-scoped role assignment decisions are accepted. Event-scoped assignments are subordinate to organization-level authority. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
