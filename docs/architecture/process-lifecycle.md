@@ -106,7 +106,7 @@ All routes require an Auth0 session and active organization membership. Event cr
 
 Configuration writes are permitted only while the process is DRAFT. A process cannot be submitted until it has at least one contest containing at least one ballot item. Organization memberships carry only OWNER, ADMIN, BILLING_MANAGER or MEMBER. Election manager, auditor and observer authority is assigned at event/process scope. The permission map is stored centrally in `private.scoped_role_permissions`. ELECTION_MANAGER can read lifecycle evidence and request status within the assigned scope; AUDITOR can read scoped audit events and approval records. OBSERVER cannot read raw audit evidence.
 
-Voter-register rows contain identifying data. Until the separate purpose-specific, time-limited PII-grant workflow is implemented, only OWNER/ADMIN can read or write those rows. Scoped ELECTION_MANAGER and AUDITOR assignments do not expose voter PII. OBSERVER cannot read ballot-item details or raw audit evidence.
+Voter-register rows contain identifying data. OWNER/ADMIN can manage register entries during DRAFT. Authenticated direct SELECT is revoked; reads and exports go through an audited, category-filtered RPC. Scoped ELECTION_MANAGER and AUDITOR assignments require a separate purpose-specific, time-limited grant before identifying fields are returned. OBSERVER is never eligible. See [voter PII access](../security/voter-pii-access.md).
 
 ## HTTP contracts
 
@@ -178,6 +178,9 @@ An active OWNER or ADMIN can invoke this only at or after the approved `closes_a
 Use `REJECT` to reject. API routes require an Auth0 session; database authorization is authoritative.
 
 ## Remaining lifecycle work
+
+Voter PII grant and audited read/export foundations are implemented in `20261123200600_voter_pii_access_grants.sql`; the dedicated management UI, notifications and staging integration tests remain. See [voter PII access](../security/voter-pii-access.md).
+
 
 1. Add a scheduler/cron worker to invoke scheduled opening and closure reliably without a manager request.
 2. Add a controlled schedule-change request with assurance-tier approvals and version invalidation.
