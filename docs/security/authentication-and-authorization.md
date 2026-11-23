@@ -58,6 +58,12 @@ Authorization is layered:
 
 RLS is defense in depth, not a replacement for application-level policy checks and security tests. Privileged server operations must still validate organization scope and action permissions.
 
+## Privileged billing operations
+
+The Supabase service-role key is server-only and must never be exposed through a `NEXT_PUBLIC_` variable, browser bundle, client component or log. The billing adapter uses a dedicated server-only client for payment-ledger writes after the request-scoped Auth0/Supabase client has verified the caller's active organization membership and billing role.
+
+The Paystack webhook verifies the raw request signature, verifies successful transactions directly with Paystack, then invokes a database function restricted to the `service_role`. The function checks the ledger amount and currency and atomically records the payment, webhook idempotency key and audit evidence. The browser callback cannot mark a payment successful.
+
 ## Required verification before launch
 
 - Configure Auth0 in Supabase and verify the ID token is accepted as the authenticated Postgres role.
