@@ -35,7 +35,7 @@ test("grant scope, categories, purpose and expiry are immutable request inputs",
   assert.match(migration, /permitted_categories text\[\] not null/);
   assert.match(migration, /purpose text not null check/);
   assert.match(migration, /requested_expires_at timestamptz not null/);
-  assert.match(migration, /requested_expires_at > now\(\) \+ private\.max_voter_pii_grant_lifetime/);
+  assert.match(migration, /target_expires_at > now\(\) \+ private\.max_voter_pii_grant_lifetime/);
 });
 
 test("direct authenticated SELECT is revoked and register reads go through an audited RPC", () => {
