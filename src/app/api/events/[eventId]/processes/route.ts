@@ -94,20 +94,18 @@ export async function POST(request: Request, context: RouteContext) {
 
     const { data: membership, error: membershipError } = await supabase
       .from("organization_memberships")
-      .select("role")
+      .select("id")
       .eq("organization_id", event.organization_id)
       .eq("user_id", user.id)
       .eq("status", "ACTIVE")
       .maybeSingle();
 
-    if (
-      membershipError ||
-      !membership ||
-      !["OWNER", "ADMIN", "ELECTION_MANAGER"].includes(membership.role)
-    ) {
-      return NextResponse.json({ error: "You do not have permission to create processes in this event." }, { status: 403 });
+    if (membershipError || !membership) {
+      return NextResponse.json({ error: "An active organization membership is required." }, { status: 403 });
     }
 
+    // The INSERT RLS policy decides whether this member is OWNER/ADMIN or has
+    // an active event-scoped ELECTION_MANAGER permission.
     const { data: process, error } = await supabase
       .from("voting_processes")
       .insert({
