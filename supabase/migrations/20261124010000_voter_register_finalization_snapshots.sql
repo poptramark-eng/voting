@@ -213,6 +213,9 @@ declare
   payload text;
   snapshot_digest text;
   snapshot_id uuid;
+  required_pii_categories text[] := array[]::text[];
+  active_grant_categories text[];
+  pii_grant_id uuid;
 begin
   if caller_id is null then
     raise exception 'Authenticated application identity is required' using errcode = '28000';
@@ -284,6 +287,50 @@ begin
   if duplicate_reference_count > 0 then
     raise exception 'Duplicate external references among eligible voters must be resolved before finalization'
       using errcode = '22023';
+  end if;
+
+  -- Non-governor managers must hold an active, purpose-specific grant covering
+  -- every non-null PII category copied into this immutable snapshot.
+  if not private.has_org_role(
+    target_organization,
+    array['OWNER','ADMIN']::public.organization_member_role[]
+  ) then
+    if exists (
+      select 1 from public.voter_register_entries
+      where process_id = target_process and display_name is not null
+    ) then
+      required_pii_categories := array_append(required_pii_categories, 'VOTER_NAME');
+    end if;
+    if exists (
+      select 1 from public.voter_register_entries
+      where process_id = target_process and contact_email is not null
+    ) then
+      required_pii_categories := array_append(required_pii_categories, 'CONTACT_EMAIL');
+    end if;
+    if exists (
+      select 1 from public.voter_register_entries
+      where process_id = target_process and contact_phone is not null
+    ) then
+      required_pii_categories := array_append(required_pii_categories, 'CONTACT_PHONE');
+    end if;
+    if exists (
+      select 1 from public.voter_register_entries
+      where process_id = target_process and external_reference is not null
+    ) then
+      required_pii_categories := array_append(required_pii_categories, 'EXTERNAL_REFERENCE');
+    end if;
+
+    if cardinality(required_pii_categories) > 0 then
+      select g.grant_id, g.permitted_categories
+      into pii_grant_id, active_grant_categories
+      from private.active_voter_pii_grant(target_process) g;
+
+      if pii_grant_id is null
+         or not (required_pii_categories <@ active_grant_categories) then
+        raise exception 'An active voter PII grant covering every populated identity category is required'
+          using errcode = '42501';
+      end if;
+    end if;
   end if;
 
   select coalesce(
@@ -364,6 +411,8 @@ begin
       'revoked_count', revoked_count,
       'required_approvals', private.required_process_approvals(process_row.assurance_tier),
       'integrity_digest', snapshot_digest,
+      'pii_grant_id', pii_grant_id,
+      'pii_categories', required_pii_categories,
       'reason', trim(target_reason)
     ),
     now()
