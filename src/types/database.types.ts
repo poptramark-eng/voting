@@ -1190,6 +1190,7 @@ export type Database = {
           title: string
           updated_at: string
           vote_change_policy: Json
+          voter_register_revision: number
         }
         Insert: {
           assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
