@@ -105,7 +105,8 @@ export function ProcessRoleAssignments({
     }
   }
 
-  const eventAssignmentByUser = new Map(eventAssignments.map((assignment) => [assignment.user_id, assignment]));
+  // The server supplies newest-first history; reverse it so the newest row wins per member.
+  const eventAssignmentByUser = new Map(eventAssignments.slice().reverse().map((assignment) => [assignment.user_id, assignment]));
   const memberById = new Map(members.map((member) => [member.user_id, member]));
   const eligibleMembers = members.filter((member) => eventAssignmentByUser.get(member.user_id)?.status === "ACTIVE");
 
