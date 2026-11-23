@@ -1679,9 +1679,9 @@ begin
   end if;
 
   select count(*) into approval_count
-  from public.process_workflow_approvals
-  where request_id = target_request
-    and decision = 'APPROVE';
+  from public.process_workflow_approvals approvals
+  where approvals.request_id = target_request
+    and approvals.decision = 'APPROVE';
 
   if approval_count < request_row.required_approvals then
     return target_request;
