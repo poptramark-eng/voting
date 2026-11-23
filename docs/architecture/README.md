@@ -1,6 +1,6 @@
 # Architecture direction
 
-Status: initial architecture hypothesis; not yet an approved detailed design.
+Status: modular-monolith decision accepted; detailed domain design in progress.
 
 ## Core boundaries
 
@@ -25,13 +25,20 @@ Status: initial architecture hypothesis; not yet an approved detailed design.
 - Privileged operations require scoped authorization, separation of duties and auditable approval.
 - Hash-chained logs are tamper-evident evidence, not proof of ballot correctness or coercion resistance.
 
-## Provisional technology direction
+## Adopted implementation direction
 
-The user has requested GitHub implementation and a Supabase database. A reasonable starting direction is PostgreSQL as the system of record, TypeScript for application services, a web client and provider adapters. Supabase is under evaluation as the managed PostgreSQL platform. No application framework, authentication vendor, queue, cache or deployment platform has yet been formally selected for this repository.
+- Architecture: modular monolith with explicit domain modules; see [ADR 0001](adr/0001-modular-monolith.md).
+- Application: TypeScript, Next.js App Router as the recommended initial web and server runtime.
+- Database: PostgreSQL on Supabase as the system of record.
+- Identity: Auth0 for authentication and federation; application database remains authoritative for membership and permissions.
+- Hosting: Vercel for the Next.js application and bounded request handlers.
+- Cache: Redis is deferred until a measured need exists. It is not authoritative storage.
+- Background work: PostgreSQL transactional outbox first; add a queue/worker only when justified.
+- Auth0/Supabase identity mapping is implemented in migration `20261123160000_auth0_identity_mapping.sql`. Provider-side configuration and first-login provisioning remain to be completed.
 
 ## Delivery sequence
 
-- Foundation: repository standards, domain model, tenancy, access-control tests, migrations and CI.
+- Foundation: repository standards, domain model, tenancy, identity mapping, access-control tests, migrations and CI.
 - Core voting: process configuration, voter register, eligibility, ballot lifecycle and deterministic tallying.
 - Assurance: independent protocol review, audit evidence, verification and dispute workflows.
 - Operations: notifications, payment adapters, reporting, backups, monitoring and recovery.
@@ -39,10 +46,9 @@ The user has requested GitHub implementation and a Supabase database. A reasonab
 
 ## Architecture decisions still open
 
-- Modular monolith versus distributed services at launch.
-- Exact application framework and deployment topology.
-- Identity provider and federation strategy.
-- Queue/cache selection and transactional outbox design.
+- Final framework/package versions and application folder structure.
+- Auth0 tenant configuration, Supabase third-party provider setup and identity sync implementation.
+- Transactional outbox schema and worker execution model.
 - End-to-end verifiable voting protocol and cryptographic key management.
-- Tenant isolation strategy and Supabase role/RLS model.
-- Database schema after domain and threat-model review.
+- Tenant isolation strategy refinements and authorization test matrix.
+- Kenya legal, regulatory and privacy review.
