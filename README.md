@@ -13,7 +13,7 @@ A Kenya-first, enterprise-oriented platform for managing polls, contests, organi
 
 ## Repository status
 
-The repository contains the Auth0/Supabase multi-tenant foundation, organization onboarding, a process-lifecycle governance API foundation and a Paystack organization-billing integration foundation. The lifecycle and payment migration is on the feature branch and has not been applied to the hosted database. Ballot acceptance, cryptographic voting, tallying and subscription entitlements are not implemented.
+The repository contains the Auth0/Supabase multi-tenant foundation, organization onboarding, process-lifecycle governance, a purpose-bound voter PII access-grant/API foundation and a Paystack organization-billing integration foundation. These database changes remain on the feature branch and have not been applied to the hosted database. Ballot acceptance, cryptographic voting, tallying and subscription entitlements are not implemented.
 
 ## Documentation
 
@@ -21,6 +21,7 @@ The repository contains the Auth0/Supabase multi-tenant foundation, organization
 - `docs/architecture/README.md` — architecture direction and delivery status.
 - `docs/architecture/organization-access-model.md` — organization roles, scoped access and governance decisions.
 - `docs/architecture/process-lifecycle.md` — lifecycle states, transition rules and API contracts.
+- `docs/security/voter-pii-access.md` — purpose-bound voter PII grants, approval thresholds, data minimization, audit rules and API contracts.
 - `docs/payments/paystack-integration.md` — server-side checkout, webhook verification and setup.
 - `supabase/migrations/` — versioned database schema migrations.
 
