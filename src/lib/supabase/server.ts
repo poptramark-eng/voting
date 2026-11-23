@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 import { auth0 } from "@/lib/auth0";
+import type { Database } from "@/types/database.types";
 
 /**
  * Creates a request-scoped Supabase client authenticated with the Auth0 ID token.
@@ -25,7 +26,7 @@ export async function createSupabaseServerClient() {
     throw new Error("Supabase URL and publishable key must be configured.");
   }
 
-  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
+  const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
     accessToken: async () => idToken,
     auth: {
       autoRefreshToken: false,
@@ -34,8 +35,8 @@ export async function createSupabaseServerClient() {
     },
   });
 
-  // First login provisions an internal UUID mapped to the immutable Auth0 sub.
-  // RLS permits each user to insert/update only their own verified JWT identity.
+  // Provision or synchronise the internal UUID mapped to the immutable Auth0 sub.
+  // Column privileges and RLS ensure the caller can only write their own identity.
   const { error } = await supabase.from("app_users").upsert(
     {
       auth_subject: session.user.sub,
@@ -46,6 +47,9 @@ export async function createSupabaseServerClient() {
   );
 
   if (error) {
+    // Keep provider/database details out of the response; the server log retains
+    // the original Supabase error for diagnosis.
+    console.error("Supabase application identity provisioning failed:", error);
     throw new Error("Unable to provision the authenticated application identity.");
   }
 
