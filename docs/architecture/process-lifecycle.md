@@ -14,11 +14,13 @@ The lifecycle implementation does not implement ballot acceptance, tallying, res
 |---|---|---|---|
 | DRAFT | Submit for approval | PENDING_APPROVAL | Active OWNER, ADMIN or ELECTION_MANAGER |
 | PENDING_APPROVAL | Required approvals completed | SCHEDULED | Distinct active OWNER/ADMIN approvers |
+| SCHEDULED | Approved opening time reached | OPEN | Active OWNER or ADMIN invokes the scheduled-open operation |
+| SCHEDULED or OPEN | Approved closing time reached | CLOSED | Active OWNER or ADMIN invokes the expired-close operation |
 | OPEN | Emergency suspension | SUSPENDED | Active OWNER or ADMIN; immediate |
 | SUSPENDED | Approved resumption | SCHEDULED, OPEN or CLOSED | Assurance-tier approvals |
 | Non-OPEN, non-CERTIFIED, non-TERMINATED | Approved termination | TERMINATED | Assurance-tier approvals |
 
-The target state after resumption is calculated from the process schedule:
+Scheduled opening and closing are currently manager-invoked operations; a scheduler/cron worker is not included yet. The target state after resumption is calculated from the process schedule:
 - Before `opens_at`: `SCHEDULED`.
 - Between `opens_at` and `closes_at`: `OPEN`.
 - At or after `closes_at`: `CLOSED`.
@@ -77,6 +79,8 @@ Migration: `supabase/migrations/20261123160000_process_lifecycle_and_payments.sq
 - `voting_processes.assurance_tier`: process assurance tier with parent-event floor.
 - `private.required_process_approvals`: central threshold mapping.
 - `public.submit_process_for_approval`
+- `public.open_scheduled_process`
+- `public.close_expired_process`
 - `public.emergency_suspend_process`
 - `public.request_process_resumption`
 - `public.request_process_termination`
@@ -139,9 +143,9 @@ Use `REJECT` to reject. API routes require an Auth0 session; database authorizat
 
 ## Remaining lifecycle work
 
-1. Add a controlled schedule-change request with assurance-tier approvals and version invalidation.
-2. Add voter-register finalization, result certification and recount workflows when those domain models exist.
-3. Define and implement manual/automatic opening, closure, extension and lifecycle recovery.
+1. Add a scheduler/cron worker to invoke scheduled opening and closure reliably without a manager request.
+2. Add a controlled schedule-change request with assurance-tier approvals and version invalidation.
+3. Add voter-register finalization, result certification and recount workflows when those domain models exist.
 4. Implement ballot acceptance only after the cryptographic secrecy and verifiability protocol is independently reviewed.
 5. Add scoped event/process assignments and permission resolution; this first migration continues to rely on current organization roles.
 6. Add integration tests for cross-tenant access, self-approval, duplicate approvals, stale requests, concurrent approval and all assurance tiers.
