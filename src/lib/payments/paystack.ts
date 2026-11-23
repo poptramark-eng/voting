@@ -152,8 +152,11 @@ function constantTimeHexEquals(expectedHex: string, actualHex: string): boolean 
 export function verifyPaystackWebhookSignature(rawBody: Buffer, headers: Headers): boolean {
   const currentSignature = headers.get("paystack-signature");
   if (currentSignature) {
-    const signingSecret = process.env.PAYSTACK_WEBHOOK_SECRET;
-    if (!signingSecret) return false;
+    const signingSecrets = [
+      process.env.PAYSTACK_WEBHOOK_SECRET,
+      process.env.PAYSTACK_WEBHOOK_SECRET_PREVIOUS,
+    ].filter((secret): secret is string => Boolean(secret));
+    if (signingSecrets.length === 0) return false;
 
     const parts = currentSignature.split(",");
     const timestampPart = parts.find((part) => part.trim().startsWith("t="));
@@ -175,13 +178,16 @@ export function verifyPaystackWebhookSignature(rawBody: Buffer, headers: Headers
 
     if (signatures.length === 0) return false;
 
-    const expected = createHmac("sha512", signingSecret)
-      .update(timestamp)
-      .update(".")
-      .update(rawBody)
-      .digest("hex");
-
-    return signatures.some((signature) => constantTimeHexEquals(expected, signature));
+    return signatures.some((signature) =>
+      signingSecrets.some((secret) => {
+        const expected = createHmac("sha512", secret)
+          .update(timestamp)
+          .update(".")
+          .update(rawBody)
+          .digest("hex");
+        return constantTimeHexEquals(expected, signature);
+      })
+    );
   }
 
   const legacySignature = headers.get("x-paystack-signature");
