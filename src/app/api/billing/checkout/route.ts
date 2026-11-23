@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
   if (!session.user.email) {
-    return NextResponse.json({ error: "A verified account email is required for checkout." }, { status: 400 });
+    return NextResponse.json({ error: "An account email is required for checkout." }, { status: 400 });
   }
 
   const idempotencyKey = request.headers.get("idempotency-key");
@@ -26,12 +26,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "A valid Idempotency-Key header is required." }, { status: 400 });
   }
 
-  let body: CheckoutBody;
+  let parsedBody: unknown;
   try {
-    body = (await request.json()) as CheckoutBody;
+    parsedBody = await request.json();
   } catch {
     return NextResponse.json({ error: "A JSON request body is required." }, { status: 400 });
   }
+
+  if (typeof parsedBody !== "object" || parsedBody === null || Array.isArray(parsedBody)) {
+    return NextResponse.json({ error: "A JSON object is required." }, { status: 400 });
+  }
+  const body = parsedBody as CheckoutBody;
 
   if (
     typeof body.organizationId !== "string" ||
