@@ -338,4 +338,40 @@ The assurance tier is resolved from the affected voting process, never supplied 
 
 This policy does not authorize resumption without a documented review, does not grant scoped roles independent resumption authority, and does not alter the separate emergency-suspension authority in Section 15.
 
+
+## 17. Termination of a voting process
+
+**Accepted decision:** Termination is an irreversible lifecycle action. A terminated process cannot be reopened, resumed, rescheduled or returned to an active state. If a new vote is needed, it must be created as a new process with its own identity, approvals and audit history.
+
+Termination requires formal approval using the assurance-tier thresholds in Section 13:
+
+| Assurance tier | Required approvals |
+|---|---:|
+| STANDARD | 1 |
+| ENHANCED | 2 |
+| HIGH | 2 |
+| CRITICAL | 3 |
+
+The following safeguards apply:
+
+1. A termination request must state a specific reason and include relevant supporting evidence. It must identify the exact event, process and process version being terminated.
+2. The requester cannot approve their own termination request. Approvals must be made by the required number of distinct active organization `OWNER` or `ADMIN` users. No person may fill more than one approval slot.
+3. If the process is `OPEN`, it must first be emergency-suspended under Section 15. Termination approval does not replace the immediate containment step.
+4. Approvers must review the reason, evidence, operational impact, voter communications plan and records-preservation plan. Material changes to the request invalidate prior approvals and require the threshold again. A rejection prevents termination; a corrected request must be resubmitted.
+5. A process remains in its current state (or `SUSPENDED` after emergency containment) until all required approvals and eligibility checks pass. The terminal state transition and audit evidence must be committed atomically where feasible.
+6. Termination does not mean deletion. Preserve the process configuration, approvals, audit trail, voter-register evidence, ballot records and any results or reports under the applicable retention and privacy policy. Restrict access according to the relevant assurance and data-protection rules; do not expose ballot choices or voter-to-ballot linkage as part of termination.
+7. Record the requester, approvers, decisions, timestamps, assurance tier, reason, evidence references, exact process scope/version and final transition. Notify authorized stakeholders according to the approved communications policy.
+
+The assurance tier is resolved from the affected process, never supplied by the requester. If a termination operation spans multiple processes, the highest applicable assurance tier and approval threshold govern. A `CERTIFIED` process is already a completed terminal outcome and cannot be terminated through this workflow; any correction or challenge must use a separately designed post-certification process.
+
+## 18. Payment provider
+
+**Accepted direction:** Paystack is the selected payment provider for the platform's payment flows. The initial intended scope is platform-level organization billing, subscriptions and service fees, not payments that buy votes or influence election outcomes.
+
+Payment processing must remain separate from voter eligibility, ballot submission, ballot contents and result certification. A successful payment must never be treated as evidence that a person has voted or is entitled to cast a ballot.
+
+Before production integration, validate the applicable Paystack country, currency, payment-method, settlement, fee, refund and compliance requirements for the platform's operating markets. The implementation should verify provider webhook signatures, process events idempotently, reconcile provider transactions against an internal payment ledger, and treat verified server-side provider events—not browser redirects—as authoritative payment status. Do not store raw card details or commit provider secrets to source control.
+
+This records the provider direction; it does not authorize a production payment integration, database changes or changes to election permissions.
+
 The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12, the assurance-tiered approval thresholds, and the tier-based maximum grant lifetimes and re-authorization rules in Section 12, the verified-email invitation acceptance policy, seven-day default invitation expiry, single-use hashed invitation tokens, and Resend as the transactional invitation email provider in Section 4, the assurance-tiered approval matrix and safeguards for sensitive operations in Section 13, and the fixed built-in role strategy for the first release with custom roles deferred as described in Section 14 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
