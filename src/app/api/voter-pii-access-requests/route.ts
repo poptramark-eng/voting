@@ -59,7 +59,8 @@ export async function GET(request: Request) {
     const requests = (data ?? []).map((item) => ({
       ...item,
       effectiveStatus:
-        item.status === "ACTIVE" && item.expires_at && new Date(item.expires_at).getTime() <= now
+        ((item.status === "ACTIVE" && item.expires_at && new Date(item.expires_at).getTime() <= now) ||
+        (item.status === "PENDING" && new Date(item.requested_expires_at).getTime() <= now))
           ? "EXPIRED"
           : item.status,
     }));
