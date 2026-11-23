@@ -47,7 +47,7 @@ export async function POST(request: Request, context: RouteContext) {
     const { data, error } = await supabase.rpc("decide_voter_pii_access_request", {
       target_request: requestId,
       target_decision: body.decision,
-      target_comment: typeof body.comment === "string" ? body.comment.trim() || null : null,
+      target_comment: typeof body.comment === "string" ? body.comment.trim() || undefined : undefined,
     });
 
     if (error) {
