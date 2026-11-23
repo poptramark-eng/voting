@@ -55,7 +55,7 @@ The requested expiry must be in the future and within the tier maximum. These ar
 - Any authorized approver rejection immediately rejects the request.
 - The grant activates only after the required distinct approvals.
 - Approvals store a snapshot of scope, recipient, categories, purpose, tier and requested expiry.
-- Request details cannot be edited after submission. To change scope, purpose, categories or expiry, revoke/cancel the old request and create a new request with fresh approvals.
+- Request details cannot be edited after submission. To change scope, purpose, categories or expiry, an OWNER/ADMIN must revoke the old request; then create a new request with fresh approvals.
 - Renewal is a new request with fresh approvals; no automatic or silent renewal is allowed.
 - A process/event assurance-tier increase above an active grant's approved tier automatically changes the grant to SUSPENDED and writes audit evidence. Pending requests become stale if the tier changes before approval completes. A new request and fresh approvals are required; suspended grants are never silently reactivated.
 - A decrease in assurance tier does not extend an existing grant or relax the approvals already obtained.
@@ -86,9 +86,9 @@ All routes require an Auth0 session. Postgres RPC checks and RLS remain authorit
 ```json
 {
   "scope": "PROCESS",
-  "eventId": "event-uuid",
-  "processId": "process-uuid",
-  "recipientUserId": "app-user-uuid",
+  "eventId": "00000000-0000-4000-8000-000000000001",
+  "processId": "00000000-0000-4000-8000-000000000002",
+  "recipientUserId": "00000000-0000-4000-8000-000000000003",
   "categories": ["VOTER_NAME", "CONTACT_EMAIL"],
   "purpose": "Contact registered voters to resolve duplicate eligibility records before register finalization.",
   "expiresAt": "2026-11-25T10:00:00.000Z"
