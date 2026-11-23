@@ -70,6 +70,38 @@ with check (
   )
 );
 
+-- Keep register identity, scope and provenance immutable after creation.
+create or replace function private.guard_voter_register_entry_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if new.id is distinct from old.id
+     or new.process_id is distinct from old.process_id
+     or new.created_by is distinct from old.created_by
+     or new.created_at is distinct from old.created_at
+     or new.source is distinct from old.source then
+    raise exception 'Voter register identity, scope and provenance fields are immutable'
+      using errcode = '42501';
+  end if;
+
+  new.updated_at := now();
+  return new;
+end;
+$function$;
+
+revoke all on function private.guard_voter_register_entry_update()
+  from public, anon, authenticated;
+
+drop trigger if exists voter_register_entries_guard_update
+  on public.voter_register_entries;
+
+create trigger voter_register_entries_guard_update
+before update on public.voter_register_entries
+for each row execute function private.guard_voter_register_entry_update();
+
 -- Keep an immutable, PII-minimized audit trail for voter-register mutations.
 create or replace function private.audit_voter_register_entry_change()
 returns trigger
@@ -100,9 +132,12 @@ begin
       case when old.display_name is distinct from new.display_name then 'display_name' end,
       case when old.contact_email is distinct from new.contact_email then 'contact_email' end,
       case when old.contact_phone is distinct from new.contact_phone then 'contact_phone' end,
-      case when old.eligibility_status is distinct from new.eligibility_status then 'eligibility_status' end,
-      case when old.source is distinct from new.source then 'source' end
+      case when old.eligibility_status is distinct from new.eligibility_status then 'eligibility_status' end
     ], null);
+  end if;
+
+  if tg_op = 'UPDATE' and cardinality(changed_fields) = 0 then
+    return new;
   end if;
 
   insert into public.audit_events (
