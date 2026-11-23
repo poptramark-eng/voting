@@ -209,11 +209,25 @@ Voter-identifying data is protected separately from event- and process-scoped ro
 - Data exports must apply the same scope, purpose and expiry restrictions as on-screen access. Export events should be separately audited.
 - OWNER/ADMIN approval of a grant does not override applicable privacy law, data minimization, retention rules or higher-assurance separation-of-duties controls.
 
+### Assurance-tiered approval for voter-identifying data grants
+
+The approval threshold is determined by the assurance tier of the voting process covered by the grant:
+
+- **STANDARD:** one approval from an active OWNER or ADMIN is required.
+- **ENHANCED, HIGH, and CRITICAL:** two approvals from two distinct active users, each holding an OWNER or ADMIN role in the organization, are required before the grant becomes active.
+- The requester may request access for themselves or another eligible recipient, but the requester cannot approve that request. No person may supply more than one of the required approvals.
+- For tiers requiring two approvals, one approval is insufficient to activate the grant. If either authorized approver rejects the request, the request is denied and no grant becomes active.
+- The approval record must capture the approver, decision, timestamp, assurance tier, exact scope, purpose, permitted data categories, and requested expiry. The grant becomes active only after the required approvals have been recorded and all grant eligibility checks pass.
+- Request, approval, rejection, activation, expiry and revocation events must be auditable. Approval and grant activation must be atomic with their audit evidence where feasible.
+- Any change to the requested organization/event/process scope, purpose, permitted data categories or expiry after approval invalidates the existing approvals; the changed request must pass the applicable approval threshold again.
+- The assurance tier used to determine the threshold must be resolved from the process being accessed, not supplied by the requester. If the grant covers multiple processes with different assurance tiers, apply the highest applicable approval threshold.
+- An OWNER or ADMIN who is the requester cannot approve their own request, even if they otherwise have grant authority.
+
 ## 13. Open decisions before implementation
 
-1. Whether voter-identifying data grants require a second approver for enhanced/high/critical assurance processes, and the exact re-authorization cadence.
+1. The exact re-authorization cadence for voter-identifying data grants.
 2. Whether invitations are email-only initially and which verification rule is required when the Auth0 email is unverified.
 3. Which actions require two-person approval at each assurance tier.
 4. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
 
-The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, and the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
+The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12, and the assurance-tiered approval thresholds for those grants are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
