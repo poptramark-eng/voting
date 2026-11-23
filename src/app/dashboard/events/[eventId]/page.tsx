@@ -46,7 +46,18 @@ export default async function EventWorkspacePage({ params }: PageProps) {
   if (!organization) notFound();
   if (error) throw new Error("Unable to load voting processes.");
 
-  const canCreate = ["OWNER", "ADMIN"].includes(membership.role);
+  const { data: eventAssignment } = await supabase.from("event_role_assignments")
+    .select("id, expires_at")
+    .eq("event_id", eventId)
+    .eq("user_id", appUser.id)
+    .eq("role", "ELECTION_MANAGER")
+    .eq("status", "ACTIVE")
+    .maybeSingle();
+
+  const eventManagerAssignmentIsActive =
+    Boolean(eventAssignment) &&
+    (!eventAssignment?.expires_at || new Date(eventAssignment.expires_at).getTime() > Date.now());
+  const canCreate = ["OWNER", "ADMIN"].includes(membership.role) || eventManagerAssignmentIsActive;
 
   return (
     <main className="shell" style={{ paddingTop: 40, paddingBottom: 64 }}>
@@ -89,7 +100,7 @@ export default async function EventWorkspacePage({ params }: PageProps) {
           <CreateProcessForm eventId={eventId} />
         </section>
       ) : (
-        <p className="muted" style={{ marginTop: 24 }}>Only organization owners and administrators can configure processes from this workspace.</p>
+        <p className="muted" style={{ marginTop: 24 }}>Process configuration is available to organization owners, administrators and active event-scoped election managers.</p>
       )}
     </main>
   );
