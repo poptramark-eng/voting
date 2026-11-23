@@ -85,7 +85,7 @@ export default async function EventWorkspacePage({ params }: PageProps) {
     if (memberError || assignmentError) {
       throw new Error("Unable to load event-scoped role administration.");
     }
-    initialMembers = (memberRows ?? []).map((member) => ({
+    initialMembers = (memberRows ?? []).filter((member) => member.status === "ACTIVE").map((member) => ({
       user_id: member.user_id,
       email: member.email,
       display_name: member.display_name,
