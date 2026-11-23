@@ -252,9 +252,33 @@ The maximum lifetime of a voter-identifying data grant is determined by the high
 - If a process's assurance tier increases while a grant is active, immediately apply the shorter maximum lifetime. Re-evaluate the approval threshold against the new tier; suspend access until any newly required approvals have been obtained. A tier decrease does not extend an existing grant or relax its already-required approvals.
 - An OWNER or ADMIN may revoke a grant before expiry. Revocation takes effect immediately for subsequent reads and exports.
 
-## 13. Open decisions before implementation
+## 13. Assurance-tiered approval for sensitive voting operations
 
-1. Which actions require two-person approval at each assurance tier beyond voter-identifying data grants.
-2. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
+The following approval matrix is the accepted default for sensitive operations. The required count is the number of distinct approvers, determined by the assurance tier of the voting process.
 
-The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12, the assurance-tiered approval thresholds, and the tier-based maximum grant lifetimes and re-authorization rules in Section 12, the verified-email invitation acceptance policy, seven-day default invitation expiry, single-use hashed invitation tokens, and Resend as the transactional invitation email provider in Section 4 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
+| Sensitive action | STANDARD | ENHANCED | HIGH | CRITICAL |
+|---|---:|---:|---:|---:|
+| Finalize voter register | 1 | 2 | 2 | 3 |
+| Approve a voting process | 1 | 2 | 2 | 3 |
+| Change an approved schedule | 1 | 2 | 2 | 3 |
+| Certify results | 1 | 2 | 2 | 3 |
+| Authorize a recount | 1 | 2 | 2 | 3 |
+
+### Mandatory approval safeguards
+
+1. The person who initiates or submits an operation cannot approve that same operation, at any assurance tier.
+2. Every required approval must come from a different person. No individual may satisfy more than one approval slot.
+3. Approvers must be active OWNER or ADMIN members of the organization. Scoped ELECTION_MANAGER, AUDITOR and OBSERVER assignments do not independently confer approval authority.
+4. Approvals are bound to the exact operation, scope and version/snapshot being reviewed. Any material change to the operation, including its relevant configuration or schedule, invalidates all prior approvals and requires the threshold to be met again.
+5. An operation remains pending and must not take effect until all required approvals are recorded and eligibility checks pass. A rejection prevents activation and requires a new submission after the issue is addressed.
+6. Record the initiator, each approver and decision, timestamps, assurance tier, exact scope, operation/version and relevant approved details in an auditable record. Approval and state transition must be atomic with audit evidence where feasible.
+7. For result certification, approvers must also be independent of the people who prepared the results being certified. Result preparation and certification must remain separate duties.
+8. The assurance tier is resolved from the voting process being acted upon, never supplied by the requester. If an operation spans multiple processes, apply the highest applicable tier and threshold.
+
+These controls are the default approval policy for the listed operations. They do not grant lifecycle-transition permissions to scoped roles or override the separate voter-identifying-data grant policy in Section 12. Emergency suspension and other unlisted actions require their own explicit policy rather than an inferred exception.
+
+## 14. Open decisions before implementation
+
+1. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
+
+The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12, the assurance-tiered approval thresholds, and the tier-based maximum grant lifetimes and re-authorization rules in Section 12, the verified-email invitation acceptance policy, seven-day default invitation expiry, single-use hashed invitation tokens, and Resend as the transactional invitation email provider in Section 4, and the assurance-tiered approval matrix and safeguards for sensitive operations in Section 13 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
