@@ -1160,6 +1160,15 @@ export type Database = {
         Args: { target_process: string }
         Returns: string
       }
+      update_voter_register_eligibility: {
+        Args: {
+          target_entry: string
+          target_process: string
+          target_reason: string
+          target_status: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       assurance_tier: "STANDARD" | "ENHANCED" | "HIGH" | "CRITICAL"
