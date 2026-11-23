@@ -89,7 +89,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         )}
         <div className="actions">
           <Link className="button secondary" href="/dashboard">Return to dashboard</Link>
-          <Link className="button" href="/dashboard/billing?reference=">Refresh status</Link>
+          <Link className="button" href={`/dashboard/billing?reference=${encodeURIComponent(payment.provider_reference)}`}>Refresh status</Link>
         </div>
       </section>
     </main>
