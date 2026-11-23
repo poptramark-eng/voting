@@ -76,7 +76,12 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ error: error.message }, { status: errorStatus(error.code) });
     }
     return NextResponse.json(
-      { rows: Array.isArray(data) ? data : [], limit: pagination.limit, offset: pagination.offset },
+      {
+        rows: Array.isArray(data) ? data : [],
+        limit: pagination.limit,
+        offset: pagination.offset,
+        hasMore: Array.isArray(data) && data.length === pagination.limit,
+      },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
@@ -132,6 +137,7 @@ export async function POST(request: Request, context: RouteContext) {
         "Content-Disposition": `attachment; filename="voter-register-${processId}.csv"`,
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
+        "X-Has-More": String(rows.length === limit),
       },
     });
   } catch (error) {
