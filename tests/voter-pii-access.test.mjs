@@ -51,6 +51,13 @@ test("scoped PII access fails closed when assignment or assurance no longer cove
   assert.match(migration, /r\.expires_at > now\(\)/);
 });
 
+test("assurance increases suspend active grants at event and process scope", () => {
+  assert.match(migration, /status in \('PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTED', 'REVOKED', 'STALE'\)/);
+  assert.match(migration, /create trigger voting_processes_suspend_voter_pii_grants/);
+  assert.match(migration, /create trigger voting_events_suspend_voter_pii_grants/);
+  assert.match(migration, /set status = 'SUSPENDED'/);
+});
+
 test("a previous approver who loses active OWNER or ADMIN status invalidates pending activation", () => {
   assert.match(migration, /A prior approver is no longer an active organization OWNER or ADMIN/);
   assert.match(migration, /m\.status = 'ACTIVE'/);
