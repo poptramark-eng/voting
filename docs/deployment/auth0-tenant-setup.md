@@ -121,3 +121,14 @@ After the tenant and app exist:
 - Supabase identity mapping uses `app_users.auth_subject` for the exact Auth0 `sub`.
 - Auth0 account/tenant and Regular Web Application have **not** yet been provisioned.
 - No Auth0 or Supabase credentials have been committed to source control.
+
+
+## 7. Application-side Supabase identity bridge
+
+The application uses a server-only Supabase client. The Auth0 Next.js SDK session contains the raw ID token at `session.tokenSet.idToken`; this is passed to Supabase using the `accessToken` callback. The ID token is never exposed to browser code.
+
+The server helper lives at `src/lib/supabase/server.ts`. On first authenticated database access it upserts the current user's `app_users` record using the immutable Auth0 `sub`. The database applies RLS rules that only allow the signed-in identity to read or update its own row, and only with email/name values matching verified JWT claims.
+
+The internal UUID remains the relational key for organization memberships and voting records. The Auth0 subject remains the external identity key. Email is profile data and is not used as a key.
+
+The app deliberately does not expose a service-role key to the frontend. All application tables retain RLS. The only outstanding identity work is completing the Auth0 tenant integration and running an authenticated end-to-end test.
