@@ -55,6 +55,27 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ requestId: data }, { status: 201 });
     }
 
+    if (action === "open_scheduled" || action === "close_expired") {
+      const result =
+        action === "open_scheduled"
+          ? await supabase.rpc("open_scheduled_process", { target_process: processId })
+          : await supabase.rpc("close_expired_process", { target_process: processId });
+
+      if (result.error) {
+        console.error("Scheduled lifecycle transition failed:", {
+          action,
+          code: result.error.code,
+          message: result.error.message,
+        });
+        return NextResponse.json(
+          { error: result.error.message },
+          { status: errorStatus(result.error.code) }
+        );
+      }
+
+      return NextResponse.json({ lifecycleEventId: result.data });
+    }
+
     if (action === "emergency_suspend" || action === "request_termination") {
       const reason = body.reason;
       if (typeof reason !== "string" || reason.trim().length < 10 || reason.trim().length > 2000) {
