@@ -59,7 +59,9 @@ export async function processPaystackWebhookEvent(eventKey: string): Promise<boo
       transaction.reference !== data.provider_reference ||
       !Number.isSafeInteger(transaction.amount) ||
       transaction.amount <= 0 ||
-      typeof transaction.currency !== "string"
+      transaction.amount !== data.event_data.amount_minor ||
+      typeof transaction.currency !== "string" ||
+      transaction.currency !== data.event_data.currency
     ) {
       throw new Error("PAYSTACK_TRANSACTION_NOT_CONFIRMED");
     }
