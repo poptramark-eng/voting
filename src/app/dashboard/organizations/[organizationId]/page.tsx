@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth0 } from "@/lib/auth0";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CreateEventForm } from "./create-event-form";
+import { OrganizationMembers } from "./organization-members";
 
 type PageProps = { params: Promise<{ organizationId: string }> };
 
@@ -50,6 +51,43 @@ export default async function OrganizationWorkspacePage({ params }: PageProps) {
   if (eventsError) throw new Error("Unable to load this organization's voting events.");
 
   const canCreate = ["OWNER", "ADMIN"].includes(membership.role);
+  let initialMembers: Array<{
+    membership_id: string;
+    user_id: string;
+    email: string | null;
+    display_name: string | null;
+    role: "OWNER" | "ADMIN" | "BILLING_MANAGER" | "MEMBER";
+    status: "INVITED" | "ACTIVE" | "SUSPENDED" | "REMOVED";
+    created_at: string;
+  }> = [];
+  let initialInvitations: Array<{
+    id: string;
+    email: string;
+    role: "ADMIN" | "BILLING_MANAGER" | "MEMBER";
+    status: "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
+    expires_at: string;
+    created_at: string;
+  }> = [];
+
+  if (canCreate) {
+    const [{ data: memberRows, error: memberError }, { data: invitationRows, error: invitationError }] = await Promise.all([
+      supabase.rpc("list_organization_members", { target_org: organizationId }),
+      supabase.rpc("list_organization_invitations", { target_org: organizationId }),
+    ]);
+
+    if (memberError || invitationError) {
+      throw new Error("Unable to load organization membership administration.");
+    }
+    initialMembers = (memberRows ?? []).map((member) => ({
+      ...member,
+      role: member.role as "OWNER" | "ADMIN" | "BILLING_MANAGER" | "MEMBER",
+    }));
+    initialInvitations = (invitationRows ?? []).map((invitation) => ({
+      ...invitation,
+      role: invitation.role as "ADMIN" | "BILLING_MANAGER" | "MEMBER",
+      status: invitation.status as "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED",
+    }));
+  }
 
   return (
     <main className="shell" style={{ paddingTop: 40, paddingBottom: 64 }}>
@@ -91,6 +129,16 @@ export default async function OrganizationWorkspacePage({ params }: PageProps) {
           <p className="muted" style={{ marginTop: 20 }}>No voting events have been created in this organization yet.</p>
         )}
       </section>
+
+      {canCreate && (
+        <OrganizationMembers
+          organizationId={organizationId}
+          currentUserId={appUser.id}
+          isOwner={membership.role === "OWNER"}
+          initialMembers={initialMembers}
+          initialInvitations={initialInvitations}
+        />
+      )}
 
       {canCreate ? (
         <section className="panel" style={{ marginTop: 24 }}>
