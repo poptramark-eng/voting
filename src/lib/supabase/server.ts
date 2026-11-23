@@ -35,8 +35,15 @@ export async function createSupabaseServerClient() {
   });
 
   // First login provisions an internal UUID mapped to the immutable Auth0 sub.
-  // The database function derives identity fields from the verified JWT itself.
-  const { error } = await supabase.rpc("ensure_app_user");
+  // RLS permits each user to insert/update only their own verified JWT identity.
+  const { error } = await supabase.from("app_users").upsert(
+    {
+      auth_subject: session.user.sub,
+      email: session.user.email ?? null,
+      display_name: session.user.name ?? null,
+    },
+    { onConflict: "auth_subject" }
+  );
 
   if (error) {
     throw new Error("Unable to provision the authenticated application identity.");
