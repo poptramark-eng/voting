@@ -648,8 +648,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      close_expired_process: {
+        Args: { target_process: string }
+        Returns: string
+      }
       create_organization: {
         Args: { org_name: string; org_slug: string }
+        Returns: string
+      }
+      open_scheduled_process: {
+        Args: { target_process: string }
         Returns: string
       }
       emergency_suspend_process: {
