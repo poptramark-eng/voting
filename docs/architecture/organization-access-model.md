@@ -313,4 +313,29 @@ The following safeguards apply:
 
 This emergency authority is limited to active organization `OWNER` and `ADMIN` memberships. Scoped `ELECTION_MANAGER`, `AUDITOR` and `OBSERVER` assignments do not independently authorize emergency suspension. This decision does not define the full resumption or termination approval thresholds; those remain to be specified before implementation.
 
+
+## 16. Resumption after emergency suspension
+
+**Accepted decision:** Resuming a suspended voting process requires formal approval using the same assurance-tier thresholds as the other sensitive operations in Section 13.
+
+| Assurance tier | Required approvals |
+|---|---:|
+| STANDARD | 1 |
+| ENHANCED | 2 |
+| HIGH | 2 |
+| CRITICAL | 3 |
+
+The following safeguards apply:
+
+1. Resumption must be requested as a distinct, auditable operation after the required post-suspension review has been documented.
+2. The requester/initiator cannot approve their own resumption request. Approvals must come from the required number of distinct active organization `OWNER` or `ADMIN` users. No individual may fill more than one approval slot.
+3. Approvers must review the documented incident outcome, evidence, corrective actions and readiness to resume. Approval is bound to the exact process scope and version of the resumption request.
+4. Any material change to the request or its supporting readiness evidence invalidates prior approvals and requires the approval threshold again. A rejection prevents resumption; a corrected request must be resubmitted.
+5. The process remains suspended until all required approvals and eligibility checks pass. The transition to the appropriate resumable state and its audit evidence must be committed atomically where feasible.
+6. The system records the requester, approvers, decisions, timestamps, assurance tier, process scope, review outcome and the exact operation/version approved.
+
+The assurance tier is resolved from the affected voting process, never supplied by the requester. If a resumption operation spans multiple processes, the highest applicable assurance tier and approval threshold govern.
+
+This policy does not authorize resumption without a documented review, does not grant scoped roles independent resumption authority, and does not alter the separate emergency-suspension authority in Section 15.
+
 The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12, the assurance-tiered approval thresholds, and the tier-based maximum grant lifetimes and re-authorization rules in Section 12, the verified-email invitation acceptance policy, seven-day default invitation expiry, single-use hashed invitation tokens, and Resend as the transactional invitation email provider in Section 4, the assurance-tiered approval matrix and safeguards for sensitive operations in Section 13, and the fixed built-in role strategy for the first release with custom roles deferred as described in Section 14 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
