@@ -430,8 +430,10 @@ begin
     where r.organization_id = target_org
       and r.event_id = target_event
       and r.recipient_user_id = target_recipient
-      and r.status in ('PENDING', 'ACTIVE')
-      and (r.status = 'PENDING' or r.expires_at > now())
+      and (
+        (r.status = 'PENDING' and r.requested_expires_at > now())
+        or (r.status = 'ACTIVE' and r.expires_at > now())
+      )
       and (
         target_scope = 'EVENT'
         or r.scope_type = 'EVENT'
