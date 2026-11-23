@@ -78,9 +78,13 @@ export default async function OrganizationWorkspacePage({ params }: PageProps) {
     if (memberError || invitationError) {
       throw new Error("Unable to load organization membership administration.");
     }
-    initialMembers = memberRows ?? [];
+    initialMembers = (memberRows ?? []).map((member) => ({
+      ...member,
+      role: member.role as "OWNER" | "ADMIN" | "BILLING_MANAGER" | "MEMBER",
+    }));
     initialInvitations = (invitationRows ?? []).map((invitation) => ({
       ...invitation,
+      role: invitation.role as "ADMIN" | "BILLING_MANAGER" | "MEMBER",
       status: invitation.status as "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED",
     }));
   }
