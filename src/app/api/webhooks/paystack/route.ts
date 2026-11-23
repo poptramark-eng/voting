@@ -23,7 +23,11 @@ export async function POST(request: Request) {
 
   let payload: PaystackWebhook;
   try {
-    payload = JSON.parse(rawBody.toString("utf8")) as PaystackWebhook;
+    const parsed: unknown = JSON.parse(rawBody.toString("utf8"));
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return NextResponse.json({ error: "Invalid webhook payload." }, { status: 400 });
+    }
+    payload = parsed as PaystackWebhook;
   } catch {
     return NextResponse.json({ error: "Invalid webhook payload." }, { status: 400 });
   }
