@@ -57,7 +57,7 @@ The requested expiry must be in the future and within the tier maximum. These ar
 - Approvals store a snapshot of scope, recipient, categories, purpose, tier and requested expiry.
 - Request details cannot be edited after submission. To change scope, purpose, categories or expiry, revoke/cancel the old request and create a new request with fresh approvals.
 - Renewal is a new request with fresh approvals; no automatic or silent renewal is allowed.
-- A process/event assurance-tier increase makes an existing grant fail closed for any scope whose current tier exceeds the approved tier. Pending requests become stale if the tier changes before approval completes. A new request and fresh approvals are required.
+- A process/event assurance-tier increase above an active grant's approved tier automatically changes the grant to SUSPENDED and writes audit evidence. Pending requests become stale if the tier changes before approval completes. A new request and fresh approvals are required; suspended grants are never silently reactivated.
 - A decrease in assurance tier does not extend an existing grant or relax the approvals already obtained.
 - Expiry is enforced in the database on every read. The request row may retain status `ACTIVE` after its timestamp passes; API responses expose the computed `effectiveStatus: EXPIRED`.
 
@@ -123,7 +123,7 @@ Use `REJECT` to reject. A request remains pending until the tier threshold is me
 { "reason": "The operational need has ended." }
 ```
 
-Only active OWNER/ADMIN members may revoke.
+Only active OWNER/ADMIN members may revoke pending, active or suspended grants.
 
 ### Read and export the register
 
