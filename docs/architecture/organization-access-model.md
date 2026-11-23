@@ -297,4 +297,20 @@ The existing scope rules remain in force: `OWNER`, `ADMIN`, `BILLING_MANAGER`, a
 
 No custom-role editor, custom permission grants, or database changes are authorized by this decision.
 
+
+## 15. Emergency suspension
+
+**Accepted decision:** An active organization `OWNER` or `ADMIN` may immediately suspend an active voting process when an urgent incident or credible risk requires voting to stop. This emergency action does not wait for the ordinary assurance-tier approval threshold.
+
+The following safeguards apply:
+
+1. The actor must provide a non-empty reason. The system records the actor, timestamp, organization, event and process scope, prior process state, suspension reason and relevant incident/evidence references.
+2. The suspension takes effect immediately and prevents further ballot submissions. The operation must be enforced server-side and transactionally so that a successful suspension cannot leave ballot acceptance active.
+3. The action is recorded in tamper-resistant audit evidence and generates an operational alert for the organization’s authorized governance actors.
+4. Emergency suspension is a containment action, not approval of the underlying allegation or incident finding. It must be followed by a documented review, including the reason, evidence, impact and recommended disposition.
+5. Resumption is a separate controlled transition. It requires a documented review outcome and formal authorization under a separately defined resumption policy; the person who initiated the suspension does not gain automatic authority to resume the process.
+6. If the process should not continue, it may proceed to termination under a separately authorized transition. Suspension must preserve the prior state and relevant records for review.
+
+This emergency authority is limited to active organization `OWNER` and `ADMIN` memberships. Scoped `ELECTION_MANAGER`, `AUDITOR` and `OBSERVER` assignments do not independently authorize emergency suspension. This decision does not define the full resumption or termination approval thresholds; those remain to be specified before implementation.
+
 The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12, the assurance-tiered approval thresholds, and the tier-based maximum grant lifetimes and re-authorization rules in Section 12, the verified-email invitation acceptance policy, seven-day default invitation expiry, single-use hashed invitation tokens, and Resend as the transactional invitation email provider in Section 4, the assurance-tiered approval matrix and safeguards for sensitive operations in Section 13, and the fixed built-in role strategy for the first release with custom roles deferred as described in Section 14 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
