@@ -887,7 +887,7 @@ with check (
       and p.status = 'DRAFT'
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_permission(p.id, 'contest.manage')
+        or private.has_process_permission(p.id, 'ballot_structure.manage')
       )
   )
 );
@@ -904,7 +904,7 @@ using (
       and p.status = 'DRAFT'
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_permission(p.id, 'contest.manage')
+        or private.has_process_permission(p.id, 'ballot_structure.manage')
       )
   )
 )
@@ -917,7 +917,7 @@ with check (
       and p.status = 'DRAFT'
       and (
         private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
-        or private.has_process_permission(p.id, 'contest.manage')
+        or private.has_process_permission(p.id, 'ballot_structure.manage')
       )
   )
 );
