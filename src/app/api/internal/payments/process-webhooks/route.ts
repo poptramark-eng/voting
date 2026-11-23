@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     .select("event_key, status, attempt_count, next_attempt_at, processing_started_at")
     .in("status", ["RECEIVED", "FAILED", "PROCESSING"])
     .order("received_at", { ascending: true })
-    .limit(50);
+    .limit(10);
 
   if (error) {
     console.error("Unable to list pending Paystack webhook events:", { code: error.code, message: error.message });
