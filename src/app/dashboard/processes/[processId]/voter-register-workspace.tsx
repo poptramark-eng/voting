@@ -258,7 +258,7 @@ export function VoterRegisterWorkspace({
       {canGovern && pendingRequests.length > 0 && (
         <div style={{ marginTop: 20 }}>
           <h4 style={{ fontSize: 16 }}>Pending voter PII approvals</h4>
-          <p className="muted">Approvals are independent and must meet the request's assurance-tier threshold.</p>
+          <p className="muted">Approvals are independent and must meet the request&apos;s assurance-tier threshold.</p>
           <div className="stack">
             {pendingRequests.map((request) => (
               <article className="membership" key={request.id}>
