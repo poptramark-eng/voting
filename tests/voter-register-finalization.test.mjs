@@ -7,6 +7,7 @@ const schema = read("../supabase/migrations/20261123234858_voter_register_finali
 const rpcHardening = read("../supabase/migrations/20261123235032_harden_voter_register_finalization_rpc.sql");
 const configHardening = read("../supabase/migrations/20261123235249_harden_finalized_register_configuration.sql");
 const grantBinding = read("../supabase/migrations/20261123235555_bind_snapshot_to_pii_grant.sql");
+const piiMinimization = read("../supabase/migrations/20261123235845_minimize_voter_snapshot_pii.sql");
 const workspace = read("../src/app/dashboard/processes/[processId]/voter-register-finalization.tsx");
 const processPage = read("../src/app/dashboard/processes/[processId]/page.tsx");
 const finalizationRoute = read("../src/app/api/processes/[processId]/voter-register/finalization/route.ts");
@@ -63,6 +64,16 @@ test("snapshot PII is not directly readable and public RPCs use invoker wrappers
   assert.doesNotMatch(rpcHardening, /security definer/i);
 });
 
+
+
+test("immutable snapshots copy only eligible voter PII while hashing aggregate eligibility counts", () => {
+  assert.match(piiMinimization, /'eligible_voters'/);
+  assert.match(piiMinimization, /filter \(where v\.eligibility_status = 'ELIGIBLE'\)/);
+  assert.match(piiMinimization, /and v\.eligibility_status = 'ELIGIBLE'/);
+  assert.match(piiMinimization, /'rejected_count', rejected_count/);
+  assert.match(piiMinimization, /'revoked_count', revoked_count/);
+  assert.match(piiMinimization, /where process_id = target_process and eligibility_status = 'ELIGIBLE'/);
+});
 
 test("pending snapshots remain bound to the exact active PII grant used to create them", () => {
   assert.match(grantBinding, /create table private\.voter_register_snapshot_pii_grants/);
