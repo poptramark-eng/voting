@@ -907,14 +907,14 @@ using (
   or (
     resource_type = 'voting_process'
     and private.has_process_permission(
-      case when resource_id ~ '^[0-9a-fA-F-]{36}$' then resource_id::uuid else null end,
+      case when resource_id ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then resource_id::uuid else null end,
       'audit.read'
     )
   )
   or (
     resource_type = 'voting_event'
     and private.has_event_permission(
-      case when resource_id ~ '^[0-9a-fA-F-]{36}$' then resource_id::uuid else null end,
+      case when resource_id ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then resource_id::uuid else null end,
       'audit.read'
     )
   )
