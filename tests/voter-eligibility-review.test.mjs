@@ -43,7 +43,7 @@ test("public RPC wrapper is invoker-security and delegates to a private definer 
 });
 
 const transitionFix = readFileSync(
-  new URL("../supabase/migrations/20261123225500_fix_voter_eligibility_transition_guard.sql", import.meta.url),
+  new URL("../supabase/migrations/20261123225334_fix_voter_eligibility_transition_guard.sql", import.meta.url),
   "utf8"
 );
 
