@@ -83,7 +83,7 @@ export async function POST(request: Request) {
           target_event: targetId,
           target_user: userId,
           target_role: role as ScopedRole,
-          target_expires_at: typeof expiresAt === "string" ? new Date(expiresAt).toISOString() : null,
+          target_expires_at: typeof expiresAt === "string" ? new Date(expiresAt).toISOString() : undefined,
         })
       : await supabase.rpc("assign_process_role", {
           target_process: targetId,
