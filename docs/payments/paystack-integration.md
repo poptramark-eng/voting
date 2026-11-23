@@ -37,7 +37,7 @@ The browser sends only a `priceCode`; it cannot set the amount or currency. Conf
 }
 ```
 
-The amount above is an example only, not a proposed platform price. Agree commercial pricing before configuring any price code. `amountMinor` is the amount in the currency's smallest unit (KES cents). The server currently accepts Paystack currencies KES, USD, NGN, GHS, ZAR and XOF, enforces the published minimums (KES 300, USD 200, NGN 5,000, GHS 10, ZAR 100, XOF 100 in subunits) and a 10,000,000-subunit maximum. Confirm current Paystack market and transaction limits before launch. The selected price currency must match the organization's configured default currency.
+The amount above is an example only, not a proposed platform price. Agree commercial pricing before configuring any price code. `amountMinor` is the amount in the currency's smallest unit (KES cents). For the initial Kenya-based merchant configuration, the server accepts KES and USD only and enforces Paystack's published transaction minimums (KES 300 and USD 200 in subunits). Additional currencies must not be enabled until the merchant's registered country, supported settlement currency and transaction limits are confirmed. The implementation relies on Paystack/account limits rather than assuming a universal maximum. The selected price currency must match the organization's configured default currency.
 
 ## Checkout API
 
@@ -108,4 +108,4 @@ The service-role client is isolated in `src/lib/supabase/admin.ts` and used only
 - [Paystack Kenya payment methods](https://paystack.com/docs/v2/ke/payments/)
 - [Paystack M-PESA integration](https://paystack.com/docs/v2/ke/payments/channels/mpesa)
 
-Paystack documents hosted Checkout for Kenya with available channels including M-PESA, cards, Airtel Money, PesaLink and Apple Pay where enabled. This implementation leaves channel selection to the Paystack Dashboard/hosted Checkout configuration. Validate the current merchant onboarding, country, currency, fee, settlement, refund and compliance terms for the actual business before production use.
+Paystack's Kenya documentation includes M-PESA as a payment channel. This implementation leaves channel selection to the Paystack Dashboard/hosted Checkout configuration; confirm M-PESA and any other desired channels are enabled for the actual merchant account. Validate the current merchant onboarding, country, currency, fee, settlement, refund and compliance terms for the actual business before production use.
