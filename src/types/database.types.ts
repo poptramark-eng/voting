@@ -239,6 +239,83 @@ export type Database = {
           },
         ]
       }
+      organization_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          organization_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          role: Database["public"]["Enums"]["organization_member_role"]
+          status: string
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          invited_by: string
+          organization_id: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role: Database["public"]["Enums"]["organization_member_role"]
+          status?: string
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          organization_id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role?: Database["public"]["Enums"]["organization_member_role"]
+          status?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invitations_accepted_by_fkey"
+            columns: ["accepted_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_invitations_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_memberships: {
         Row: {
           created_at: string
@@ -1045,6 +1122,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_organization_invitation: {
+        Args: { target_token: string }
+        Returns: Json
+      }
       approve_process_workflow_request: {
         Args: { comment?: string; decision: string; target_request: string }
         Returns: string
@@ -1090,6 +1171,14 @@ export type Database = {
         Args: { org_name: string; org_slug: string }
         Returns: string
       }
+      create_organization_invitation: {
+        Args: {
+          target_email: string
+          target_org: string
+          target_role: Database["public"]["Enums"]["organization_member_role"]
+        }
+        Returns: Json
+      }
       decide_voter_pii_access_request: {
         Args: {
           target_comment?: string
@@ -1105,6 +1194,18 @@ export type Database = {
       fail_paystack_webhook_event: {
         Args: { error_message: string; target_event_key: string }
         Returns: boolean
+      }
+      list_organization_members: {
+        Args: { target_org: string }
+        Returns: {
+          created_at: string
+          display_name: string
+          email: string
+          membership_id: string
+          role: Database["public"]["Enums"]["organization_member_role"]
+          status: Database["public"]["Enums"]["organization_member_status"]
+          user_id: string
+        }[]
       }
       open_scheduled_process: {
         Args: { target_process: string }
@@ -1148,6 +1249,10 @@ export type Database = {
         Args: { target_event: string; target_user: string }
         Returns: boolean
       }
+      revoke_organization_invitation: {
+        Args: { target_invitation: string }
+        Returns: boolean
+      }
       revoke_process_role: {
         Args: { target_process: string; target_user: string }
         Returns: boolean
@@ -1159,6 +1264,15 @@ export type Database = {
       submit_process_for_approval: {
         Args: { target_process: string }
         Returns: string
+      }
+      update_organization_membership: {
+        Args: {
+          target_org: string
+          target_role: Database["public"]["Enums"]["organization_member_role"]
+          target_status: Database["public"]["Enums"]["organization_member_status"]
+          target_user: string
+        }
+        Returns: Json
       }
       update_voter_register_eligibility: {
         Args: {
