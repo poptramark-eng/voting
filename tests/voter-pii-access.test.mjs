@@ -58,6 +58,13 @@ test("assurance increases suspend active grants at event and process scope", () 
   assert.match(migration, /set status = 'SUSPENDED'/);
 });
 
+test("membership and scoped-assignment revocation suspend affected grants", () => {
+  assert.match(migration, /create trigger organization_memberships_suspend_voter_pii_grants/);
+  assert.match(migration, /create trigger event_role_assignments_suspend_voter_pii_grants/);
+  assert.match(migration, /create trigger process_role_assignments_suspend_voter_pii_grants/);
+  assert.match(migration, /Recipient organization membership became inactive/);
+});
+
 test("tier decreases preserve the stricter approval and expiry policy already requested", () => {
   assert.match(migration, /private\.assurance_tier_rank\(current_tier\)[\s\S]*?>\s*private\.assurance_tier_rank\(request_row\.assurance_tier\)/);
   assert.match(migration, /max_voter_pii_grant_lifetime\(request_row\.assurance_tier\)/);
