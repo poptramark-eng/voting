@@ -13,7 +13,7 @@ The current connected workspace does not expose an Auth0 tenant-management API o
 3. During tenant creation, select the **Europe (EU)** region. This is the recommended initial region because the Supabase project is hosted in Frankfurt. Auth0 tenant region is a foundational data-residency choice; verify the region before creating the tenant because it cannot simply be changed later.
 4. Choose a stable tenant name. The resulting domain will look like `your-tenant.eu.auth0.com` or the domain shown by the dashboard. Copy the exact domain displayed; do not include `https://` in `AUTH0_DOMAIN`.
 
-Auth0's signup page currently offers a free-plan starting option without requiring a credit card. Review the current plan limits and terms before relying on it for production workloads.
+Review Auth0's current plan limits, usage allowances and billing terms before relying on it for production workloads.
 
 ## 2. Create the web application
 
