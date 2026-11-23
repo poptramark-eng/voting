@@ -223,11 +223,28 @@ The approval threshold is determined by the assurance tier of the voting process
 - The assurance tier used to determine the threshold must be resolved from the process being accessed, not supplied by the requester. If the grant covers multiple processes with different assurance tiers, apply the highest applicable approval threshold.
 - An OWNER or ADMIN who is the requester cannot approve their own request, even if they otherwise have grant authority.
 
+
+### Grant lifetime and re-authorization cadence
+
+The maximum lifetime of a voter-identifying data grant is determined by the highest assurance tier among the processes covered by the grant:
+
+| Assurance tier | Maximum grant lifetime |
+|---|---:|
+| STANDARD | 30 days |
+| ENHANCED | 7 days |
+| HIGH | 24 hours |
+| CRITICAL | 4 hours |
+
+- These periods are maximum validity windows, not automatic renewal intervals. A grant may be issued for a shorter period when the stated purpose requires less time.
+- A grant expires automatically at its recorded expiry. Renewal requires a new request and fresh approvals under the threshold applicable at renewal; grants never renew silently or automatically.
+- If a grant covers multiple processes with different assurance tiers, use the highest tier to determine both its maximum lifetime and approval threshold.
+- If a process's assurance tier increases while a grant is active, immediately apply the shorter maximum lifetime. Re-evaluate the approval threshold against the new tier; suspend access until any newly required approvals have been obtained. A tier decrease does not extend an existing grant or relax its already-required approvals.
+- An OWNER or ADMIN may revoke a grant before expiry. Revocation takes effect immediately for subsequent reads and exports.
+
 ## 13. Open decisions before implementation
 
-1. The exact re-authorization cadence for voter-identifying data grants.
-2. Whether invitations are email-only initially and which verification rule is required when the Auth0 email is unverified.
-3. Which actions require two-person approval at each assurance tier.
-4. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
+1. Whether invitations are email-only initially and which verification rule is required when the Auth0 email is unverified.
+2. Which actions require two-person approval at each assurance tier beyond voter-identifying data grants.
+3. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
 
-The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12, and the assurance-tiered approval thresholds for those grants are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
+The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12, the assurance-tiered approval thresholds, and the tier-based maximum grant lifetimes and re-authorization rules in Section 12 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
