@@ -58,6 +58,16 @@ test("assurance increases suspend active grants at event and process scope", () 
   assert.match(migration, /set status = 'SUSPENDED'/);
 });
 
+test("tier decreases preserve the stricter approval and expiry policy already requested", () => {
+  assert.match(migration, /private\.assurance_tier_rank\(current_tier\)[\s\S]*?>\s*private\.assurance_tier_rank\(request_row\.assurance_tier\)/);
+  assert.match(migration, /max_voter_pii_grant_lifetime\(request_row\.assurance_tier\)/);
+});
+
+test("tier increases stale pending requests and suspend active grants", () => {
+  assert.match(migration, /case when r\.status = 'ACTIVE' then 'SUSPENDED' else 'STALE' end/);
+  assert.match(migration, /r\.status in \('ACTIVE', 'PENDING'\)/);
+});
+
 test("a previous approver who loses active OWNER or ADMIN status invalidates pending activation", () => {
   assert.match(migration, /A prior approver is no longer an active organization OWNER or ADMIN/);
   assert.match(migration, /m\.status = 'ACTIVE'/);
