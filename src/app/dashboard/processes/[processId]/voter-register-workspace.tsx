@@ -146,7 +146,7 @@ export function VoterRegisterWorkspace({
           eventId,
           processId,
           recipientUserId: currentUserId,
-          categories: ["VOTER_NAME", "EXTERNAL_REFERENCE"],
+          categories: ["VOTER_NAME", "EXTERNAL_REFERENCE", "CONTACT_EMAIL", "CONTACT_PHONE"],
           purpose: purpose.trim(),
           expiresAt,
         }),
