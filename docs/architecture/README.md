@@ -45,6 +45,7 @@ Status: modular-monolith decision accepted; identity boundary defined; implement
 
 - Foundation: repository standards, domain model, tenancy, identity mapping, access-control tests, migrations and CI.
 - Authentication: provision Auth0 tenant/app, configure Supabase Third-Party Auth and ID-token claim, then implement server-validated session-to-database access.
+- Organization access: membership lifecycle, role-to-permission mapping, organization-scoped routing and tenant-isolation tests. See [organization access model](organization-access-model.md) (proposed; pending product-owner review).
 - Core voting: process configuration, voter register, eligibility, ballot lifecycle and deterministic tallying.
 - Assurance: independent protocol review, audit evidence, verification and dispute workflows.
 - Operations: notifications, payment adapters, reporting, backups, monitoring and recovery.
@@ -53,8 +54,6 @@ Status: modular-monolith decision accepted; identity boundary defined; implement
 ## Architecture decisions still open
 
 - Final framework/package versions and application folder structure.
-- Auth0 tenant configuration and Supabase Third-Party Auth activation.
-- Vercel project authorization, creation/linking and environment configuration.
 - Transactional outbox schema and worker execution model.
 - End-to-end verifiable voting protocol and cryptographic key management.
 - Tenant isolation strategy refinements and authorization test matrix.
