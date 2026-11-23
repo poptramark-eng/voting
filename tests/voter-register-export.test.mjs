@@ -65,7 +65,7 @@ test("CSV export uses the union of columns and preserves CRLF separators", () =>
 
 import { createVoterRegisterRouteHandlers } from "../src/lib/voter-register-route.ts";
 
-const validProcessId = "4a5e8855-c4f1-4a10-bdfb-8c68ec33d486";
+const validProcessId = "00000000-0000-4000-8000-000000000000";
 const routeContext = { params: Promise.resolve({ processId: validProcessId }) };
 
 test("route GET requires authentication before querying the register", async () => {
