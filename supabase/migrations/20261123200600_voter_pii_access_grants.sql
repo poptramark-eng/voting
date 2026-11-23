@@ -2,10 +2,6 @@
 -- Apply only after the repository migration history is reconciled and this migration
 -- has been reviewed and exercised in a staging Supabase project.
 
-alter table private.scoped_role_permissions
-  add constraint scoped_role_permissions_unique_permission
-  unique (role, permission);
-
 insert into private.scoped_role_permissions (role, permission) values
   ('ELECTION_MANAGER', 'voter_pii.read'),
   ('AUDITOR', 'voter_pii.read')
@@ -347,7 +343,8 @@ begin
   if caller_id is null then
     raise exception 'Authenticated application identity is required' using errcode = '28000';
   end if;
-  if target_scope not in ('EVENT', 'PROCESS')
+  if target_scope is null
+     or target_scope not in ('EVENT', 'PROCESS')
      or target_event is null
      or target_recipient is null
      or target_categories is null
@@ -555,6 +552,14 @@ begin
     if not private.user_has_event_pii_role(request_row.event_id, request_row.recipient_user_id) then
       update public.voter_pii_access_requests set status = 'STALE', resolved_at = now()
       where id = request_row.id;
+      insert into public.audit_events (
+        organization_id, actor_user_id, action, resource_type, resource_id, event_data
+      )
+      values (
+        request_row.organization_id, caller_id, 'VOTER_PII_ACCESS_REQUEST_STALE',
+        'voter_pii_access_request', request_row.id::text,
+        jsonb_build_object('reason', 'Recipient no longer has an active event-scoped ELECTION_MANAGER or AUDITOR assignment')
+      );
       return jsonb_build_object('requestId', request_row.id, 'status', 'STALE');
     end if;
   elsif not private.user_has_process_permission(
@@ -562,6 +567,14 @@ begin
   ) then
     update public.voter_pii_access_requests set status = 'STALE', resolved_at = now()
     where id = request_row.id;
+    insert into public.audit_events (
+      organization_id, actor_user_id, action, resource_type, resource_id, event_data
+    )
+    values (
+      request_row.organization_id, caller_id, 'VOTER_PII_ACCESS_REQUEST_STALE',
+      'voter_pii_access_request', request_row.id::text,
+      jsonb_build_object('reason', 'Recipient no longer has an active process-scoped ELECTION_MANAGER or AUDITOR permission')
+    );
     return jsonb_build_object('requestId', request_row.id, 'status', 'STALE');
   end if;
 
