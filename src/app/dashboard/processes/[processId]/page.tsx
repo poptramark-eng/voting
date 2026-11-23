@@ -56,9 +56,9 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
   ]);
 
   const canGovern = ["OWNER", "ADMIN"].includes(membership.role);
-  const assignmentIsActive = (assignment: { status: string; expires_at: string | null } | null) =>
-    Boolean(assignment && assignment.status === "ACTIVE" &&
-      (!assignment.expires_at || Date.parse(assignment.expires_at) > Date.now()));
+  // Expiry is checked authoritatively by private.has_process_permission() in RLS.
+  const assignmentIsActive = (assignment: { status: string } | null) =>
+    Boolean(assignment && assignment.status === "ACTIVE");
   const hasEventManagerRole = assignmentIsActive(eventAssignment);
   const processRoleAllowsManagement = !processAssignment ||
     (processAssignment.role === "ELECTION_MANAGER" && assignmentIsActive(processAssignment));
