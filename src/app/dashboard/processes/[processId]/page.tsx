@@ -4,6 +4,7 @@ import { auth0 } from "@/lib/auth0";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ProcessConfiguration } from "./process-configuration";
 import { ProcessLifecycleControls } from "./process-lifecycle-controls";
+import { VoterRegisterImport } from "./voter-register-import";
 
 type PageProps = { params: Promise<{ processId: string }> };
 
@@ -55,7 +56,6 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
       .eq("role", "ELECTION_MANAGER").eq("status", "ACTIVE").maybeSingle(),
   ]);
 
-  // The database re-checks assignment expiry and permission on every write.
   const canGovern = ["OWNER", "ADMIN"].includes(membership.role);
   const canEdit = canGovern || Boolean(eventAssignment) || Boolean(processAssignment);
 
@@ -137,6 +137,10 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
         <h2 style={{ fontSize: 24, margin: "8px 0" }}>Contests and ballot options</h2>
         <p className="muted">Organize the ballot into contests, positions or questions, then add the available candidates or options.</p>
         <ProcessConfiguration processId={processId} initialContests={configuration} canEdit={canEdit} />
+      </section>
+
+      <section className="panel" style={{ marginTop: 24, maxWidth: "none" }}>
+        <VoterRegisterImport processId={processId} canEdit={canEdit && process.status === "DRAFT"} />
       </section>
     </main>
   );
