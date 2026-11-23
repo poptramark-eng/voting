@@ -314,6 +314,60 @@ export type Database = {
           },
         ]
       }
+      voting_events: {
+        Row: {
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          category: Database["public"]["Enums"]["voting_category"]
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          organization_id: string
+          status: Database["public"]["Enums"]["process_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
+          category: Database["public"]["Enums"]["voting_category"]
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          organization_id: string
+          status?: Database["public"]["Enums"]["process_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
+          category?: Database["public"]["Enums"]["voting_category"]
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          organization_id?: string
+          status?: Database["public"]["Enums"]["process_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voting_events_created_by_app_users_fk"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voting_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_transactions: {
         Row: {
           id: string
@@ -395,72 +449,50 @@ export type Database = {
         }
         Relationships: []
       }
-      voting_processes: {
+      process_lifecycle_events: {
         Row: {
-          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
-          ballot_format: Database["public"]["Enums"]["ballot_format"]
-          closes_at: string | null
-          created_at: string
-          created_by: string
-          eligibility_mode: string
-          event_id: string
           id: string
-          opens_at: string | null
-          results_disclosure: Json
-          status: Database["public"]["Enums"]["process_status"]
-          title: string
-          updated_at: string
-          vote_change_policy: Json
+          organization_id: string
+          process_id: string
+          actor_user_id: string
+          action: string
+          from_status: Database["public"]["Enums"]["process_status"]
+          to_status: Database["public"]["Enums"]["process_status"]
+          reason: string
+          evidence: Json
+          workflow_request_id: string | null
+          occurred_at: string
         }
         Insert: {
-          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
-          ballot_format: Database["public"]["Enums"]["ballot_format"]
-          closes_at?: string | null
-          created_at?: string
-          created_by: string
-          eligibility_mode: string
-          event_id: string
           id?: string
-          opens_at?: string | null
-          results_disclosure?: Json
-          status?: Database["public"]["Enums"]["process_status"]
-          title: string
-          updated_at?: string
-          vote_change_policy?: Json
+          organization_id: string
+          process_id: string
+          actor_user_id: string
+          action: string
+          from_status: Database["public"]["Enums"]["process_status"]
+          to_status: Database["public"]["Enums"]["process_status"]
+          reason: string
+          evidence?: Json
+          workflow_request_id?: string | null
+          occurred_at?: string
         }
         Update: {
-          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
-          ballot_format?: Database["public"]["Enums"]["ballot_format"]
-          closes_at?: string | null
-          created_at?: string
-          created_by?: string
-          eligibility_mode?: string
-          event_id?: string
           id?: string
-          opens_at?: string | null
-          results_disclosure?: Json
-          status?: Database["public"]["Enums"]["process_status"]
-          title?: string
-          updated_at?: string
-          vote_change_policy?: Json
+          organization_id?: string
+          process_id?: string
+          actor_user_id?: string
+          action?: string
+          from_status?: Database["public"]["Enums"]["process_status"]
+          to_status?: Database["public"]["Enums"]["process_status"]
+          reason?: string
+          evidence?: Json
+          workflow_request_id?: string | null
+          occurred_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "voting_processes_created_by_app_users_fk"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "app_users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "voting_processes_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "voting_events"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
+      process_workflow_approvals: {
+        Row: {
           id: string
           request_id: string
           approver_user_id: string
@@ -534,62 +566,9 @@ export type Database = {
         }
         Relationships: []
       }
-      voting_events: {
-        Row: {
-          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
-          category: Database["public"]["Enums"]["voting_category"]
-          created_at: string
-          created_by: string
-          description: string | null
-          id: string
-          organization_id: string
-          status: Database["public"]["Enums"]["process_status"]
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
-          category: Database["public"]["Enums"]["voting_category"]
-          created_at?: string
-          created_by: string
-          description?: string | null
-          id?: string
-          organization_id: string
-          status?: Database["public"]["Enums"]["process_status"]
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
-          category?: Database["public"]["Enums"]["voting_category"]
-          created_at?: string
-          created_by?: string
-          description?: string | null
-          id?: string
-          organization_id?: string
-          status?: Database["public"]["Enums"]["process_status"]
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "voting_events_created_by_app_users_fk"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "app_users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "voting_events_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       voting_processes: {
         Row: {
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
           ballot_format: Database["public"]["Enums"]["ballot_format"]
           closes_at: string | null
           created_at: string
@@ -605,6 +584,7 @@ export type Database = {
           vote_change_policy: Json
         }
         Insert: {
+          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
           ballot_format: Database["public"]["Enums"]["ballot_format"]
           closes_at?: string | null
           created_at?: string
@@ -620,6 +600,7 @@ export type Database = {
           vote_change_policy?: Json
         }
         Update: {
+          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
           ballot_format?: Database["public"]["Enums"]["ballot_format"]
           closes_at?: string | null
           created_at?: string
@@ -656,6 +637,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_process_workflow_request: {
+        Args: { target_request: string; decision: string; comment?: string | null }
+        Returns: string
+      }
       assign_event_role: {
         Args: {
           target_event: string
@@ -674,16 +659,8 @@ export type Database = {
         }
         Returns: string
       }
-      revoke_event_role: {
-        Args: { target_event: string; target_user: string }
-        Returns: boolean
-      }
-      revoke_process_role: {
-        Args: { target_process: string; target_user: string }
-        Returns: boolean
-      }
-      approve_process_workflow_request: {
-        Args: { target_request: string; decision: string; comment?: string | null }
+      close_expired_process: {
+        Args: { target_process: string }
         Returns: string
       }
       complete_paystack_payment: {
@@ -697,20 +674,16 @@ export type Database = {
         }
         Returns: boolean
       }
-      close_expired_process: {
-        Args: { target_process: string }
-        Returns: string
-      }
       create_organization: {
         Args: { org_name: string; org_slug: string }
         Returns: string
       }
-      open_scheduled_process: {
-        Args: { target_process: string }
-        Returns: string
-      }
       emergency_suspend_process: {
         Args: { target_process: string; reason: string; evidence?: Json }
+        Returns: string
+      }
+      open_scheduled_process: {
+        Args: { target_process: string }
         Returns: string
       }
       request_process_resumption: {
@@ -725,6 +698,14 @@ export type Database = {
       request_process_termination: {
         Args: { target_process: string; reason: string; evidence?: Json }
         Returns: string
+      }
+      revoke_event_role: {
+        Args: { target_event: string; target_user: string }
+        Returns: boolean
+      }
+      revoke_process_role: {
+        Args: { target_process: string; target_user: string }
+        Returns: boolean
       }
       submit_process_for_approval: {
         Args: { target_process: string }
