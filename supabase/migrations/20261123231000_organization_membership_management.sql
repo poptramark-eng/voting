@@ -10,7 +10,7 @@ create table public.organization_invitations (
     check (role in ('ADMIN', 'BILLING_MANAGER', 'MEMBER')),
   token_hash text not null unique check (length(token_hash) = 64),
   status text not null default 'PENDING'
-    check (status in ('PENDING', 'ACCEPTED', 'REVOKED')),
+    check (status in ('PENDING', 'ACCEPTED', 'REVOKED', 'EXPIRED')),
   invited_by uuid not null references public.app_users(id) on delete restrict,
   accepted_by uuid references public.app_users(id) on delete restrict,
   accepted_at timestamptz,
@@ -166,6 +166,13 @@ begin
     raise exception 'This email already belongs to an active or suspended organization member'
       using errcode = '23505';
   end if;
+
+  update public.organization_invitations
+  set status = 'EXPIRED'
+  where organization_id = target_org
+    and lower(email) = normalized_email
+    and status = 'PENDING'
+    and expires_at <= now();
 
   if exists (
     select 1 from public.organization_invitations i
@@ -460,6 +467,20 @@ begin
   update public.organization_memberships
   set role = target_role, status = target_status, updated_at = now()
   where id = existing.id;
+
+  if target_status <> 'ACTIVE' then
+    update public.event_role_assignments
+    set status = 'REVOKED', updated_at = now()
+    where organization_id = target_org
+      and user_id = target_user
+      and status = 'ACTIVE';
+
+    update public.process_role_assignments
+    set status = 'REVOKED', updated_at = now()
+    where organization_id = target_org
+      and user_id = target_user
+      and status = 'ACTIVE';
+  end if;
 
   insert into public.audit_events (
     organization_id, actor_user_id, action, resource_type, resource_id, event_data
