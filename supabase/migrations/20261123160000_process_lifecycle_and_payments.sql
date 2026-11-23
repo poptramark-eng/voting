@@ -1351,6 +1351,13 @@ begin
     raise exception 'Process is not within its approved opening window' using errcode = '22023';
   end if;
 
+  if exists (
+    select 1 from public.process_workflow_requests r
+    where r.process_id = target_process and r.status = 'PENDING'
+  ) then
+    raise exception 'A pending governance request must be resolved before opening' using errcode = '22023';
+  end if;
+
   update public.voting_processes
   set status = 'OPEN', updated_at = now()
   where id = target_process;
@@ -1416,6 +1423,13 @@ begin
      or process_row.closes_at is null
      or process_row.closes_at > now() then
     raise exception 'Process has not reached its approved closing time' using errcode = '22023';
+  end if;
+
+  if exists (
+    select 1 from public.process_workflow_requests r
+    where r.process_id = target_process and r.status = 'PENDING'
+  ) then
+    raise exception 'A pending governance request must be resolved before closing' using errcode = '22023';
   end if;
 
   update public.voting_processes
