@@ -98,8 +98,9 @@ In the Supabase project `nvfpvzltubsczyrnwskh`:
 
 1. Open **Authentication → Third-Party Auth** (or the current Third-Party Auth settings section).
 2. Add **Auth0** as a provider.
-3. Enter the exact Auth0 tenant issuer/domain requested by Supabase.
-4. Save and verify the provider configuration.
+3. In the Auth0 Dashboard, open **Settings → General** and copy the tenant's **Tenant ID** and region. Supabase's Auth0 integration expects the tenant identifier and region (not the application Client ID and not the domain). For an EU tenant, set the region to the value shown by Auth0 (commonly `eu`).
+4. Enter the Tenant ID and region in Supabase, then save and verify the provider configuration.
+5. Keep the Auth0 domain separately for the Next.js `AUTH0_DOMAIN` environment variable.
 
 Use the Auth0 **ID token** when making Supabase Data API requests. Do not substitute the Auth0 access token. Keep the existing RLS policies enabled and test that a signed-in user maps by immutable Auth0 `sub` to `app_users.auth_subject`.
 
