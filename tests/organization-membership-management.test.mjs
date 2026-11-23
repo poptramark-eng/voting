@@ -70,3 +70,16 @@ test("invitation creation rejects already invited, suspended, active, and privil
   assert.match(existingMembershipFix, /m\.status in \('ACTIVE', 'SUSPENDED', 'INVITED'\)/);
   assert.match(existingMembershipFix, /m\.role in \('OWNER', 'ADMIN'\)/);
 });
+
+const invitationPrivacyMigration = readFileSync(
+  new URL("../supabase/migrations/20261123231757_hide_invitation_token_hashes.sql", import.meta.url),
+  "utf8"
+);
+
+test("invitation token hashes are not directly selectable through the public Data API", () => {
+  assert.match(invitationPrivacyMigration, /revoke all on public\.organization_invitations from public, anon, authenticated/);
+  assert.match(invitationPrivacyMigration, /private\.list_organization_invitations/);
+  assert.match(invitationPrivacyMigration, /returns table \([\s\S]*?email text[\s\S]*?role public\.organization_member_role[\s\S]*?expires_at timestamptz/);
+  assert.doesNotMatch(invitationPrivacyMigration, /token_hash text/);
+  assert.match(invitationPrivacyMigration, /public\.list_organization_invitations\([\s\S]*?security invoker/);
+});
