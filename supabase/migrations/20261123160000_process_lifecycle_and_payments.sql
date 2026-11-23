@@ -8,6 +8,30 @@ alter table public.voting_events
   add constraint voting_events_public_election_disabled
   check (category <> 'PUBLIC_ELECTION');
 
+
+create or replace function private.set_row_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $function$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$function$;
+
+drop trigger if exists voting_events_set_updated_at on public.voting_events;
+create trigger voting_events_set_updated_at
+before update on public.voting_events
+for each row execute function private.set_row_updated_at();
+
+drop trigger if exists voting_processes_set_updated_at on public.voting_processes;
+create trigger voting_processes_set_updated_at
+before update on public.voting_processes
+for each row execute function private.set_row_updated_at();
+
+revoke all on function private.set_row_updated_at() from public, anon, authenticated;
+
 -- Process assurance is at least as strong as its parent event.
 alter table public.voting_processes
   add column assurance_tier public.assurance_tier;
