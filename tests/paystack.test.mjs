@@ -57,6 +57,19 @@ test("rejects timestamped signatures outside the replay window", () => {
   assert.equal(verifyPaystackWebhookSignature(rawBody, headers), false);
 });
 
+test("accepts the previous signing secret during rotation overlap", () => {
+  const previousSecret = "whsec_previous_signing_secret";
+  const timestamp = Math.floor(Date.now() / 1000);
+  process.env.PAYSTACK_WEBHOOK_SECRET = "whsec_current_signing_secret";
+  process.env.PAYSTACK_WEBHOOK_SECRET_PREVIOUS = previousSecret;
+  const headers = new Headers({
+    "Paystack-Signature": timestampedSignature(rawBody, previousSecret, timestamp),
+  });
+
+  assert.equal(verifyPaystackWebhookSignature(rawBody, headers), true);
+  delete process.env.PAYSTACK_WEBHOOK_SECRET_PREVIOUS;
+});
+
 test("supports the legacy X-Paystack-Signature header", () => {
   const secret = "sk_test_legacy_secret";
   process.env.PAYSTACK_SECRET_KEY = secret;
