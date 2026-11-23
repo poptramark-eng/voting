@@ -1,0 +1,109 @@
+import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
+import test from "node:test";
+
+import {
+  createWebhookEventKey,
+  getPaystackPrice,
+  verifyPaystackWebhookSignature,
+} from "../src/lib/payments/paystack.ts";
+
+const rawBody = Buffer.from(JSON.stringify({
+  event: "charge.success",
+  data: { reference: "org-test-reference", amount: 10000, currency: "KES" },
+}));
+
+function timestampedSignature(body, secret, timestamp) {
+  const digest = createHmac("sha512", secret)
+    .update(String(timestamp))
+    .update(".")
+    .update(body)
+    .digest("hex");
+  return `t=${timestamp},v1=whk_test:${digest}`;
+}
+
+test("accepts a valid timestamped Paystack-Signature", () => {
+  const secret = "whsec_test_signing_secret";
+  const timestamp = Math.floor(Date.now() / 1000);
+  process.env.PAYSTACK_WEBHOOK_SECRET = secret;
+  const headers = new Headers({
+    "Paystack-Signature": timestampedSignature(rawBody, secret, timestamp),
+  });
+
+  assert.equal(verifyPaystackWebhookSignature(rawBody, headers), true);
+});
+
+test("rejects a body modified after signing", () => {
+  const secret = "whsec_test_signing_secret";
+  const timestamp = Math.floor(Date.now() / 1000);
+  process.env.PAYSTACK_WEBHOOK_SECRET = secret;
+  const headers = new Headers({
+    "Paystack-Signature": timestampedSignature(rawBody, secret, timestamp),
+  });
+
+  assert.equal(
+    verifyPaystackWebhookSignature(Buffer.from(rawBody.toString("utf8") + " "), headers),
+    false
+  );
+});
+
+test("rejects timestamped signatures outside the replay window", () => {
+  const secret = "whsec_test_signing_secret";
+  const timestamp = Math.floor(Date.now() / 1000) - 301;
+  process.env.PAYSTACK_WEBHOOK_SECRET = secret;
+  const headers = new Headers({
+    "Paystack-Signature": timestampedSignature(rawBody, secret, timestamp),
+  });
+
+  assert.equal(verifyPaystackWebhookSignature(rawBody, headers), false);
+});
+
+test("accepts the previous signing secret during rotation overlap", () => {
+  const previousSecret = "whsec_previous_signing_secret";
+  const timestamp = Math.floor(Date.now() / 1000);
+  process.env.PAYSTACK_WEBHOOK_SECRET = "whsec_current_signing_secret";
+  process.env.PAYSTACK_WEBHOOK_SECRET_PREVIOUS = previousSecret;
+  const headers = new Headers({
+    "Paystack-Signature": timestampedSignature(rawBody, previousSecret, timestamp),
+  });
+
+  assert.equal(verifyPaystackWebhookSignature(rawBody, headers), true);
+  delete process.env.PAYSTACK_WEBHOOK_SECRET_PREVIOUS;
+});
+
+test("supports the legacy X-Paystack-Signature header", () => {
+  const secret = "sk_test_legacy_secret";
+  process.env.PAYSTACK_SECRET_KEY = secret;
+  delete process.env.PAYSTACK_WEBHOOK_SECRET;
+  const signature = createHmac("sha512", secret).update(rawBody).digest("hex");
+  const headers = new Headers({ "X-Paystack-Signature": signature });
+
+  assert.equal(verifyPaystackWebhookSignature(rawBody, headers), true);
+});
+
+test("loads a valid Kenya price catalog entry", () => {
+  process.env.PAYSTACK_PRICE_CATALOG_JSON = JSON.stringify({
+    "org-monthly": { amountMinor: 10000, currency: "KES", description: "Monthly organization plan" },
+  });
+
+  assert.deepEqual(getPaystackPrice("org-monthly"), {
+    amountMinor: 10000,
+    currency: "KES",
+    description: "Monthly organization plan",
+  });
+});
+
+test("rejects unsupported merchant currencies and below-minimum prices", () => {
+  process.env.PAYSTACK_PRICE_CATALOG_JSON = JSON.stringify({
+    "unsupported": { amountMinor: 10000, currency: "NGN", description: "Unsupported market" },
+    "below-minimum": { amountMinor: 299, currency: "KES", description: "Below KES minimum" },
+  });
+
+  assert.throws(() => getPaystackPrice("unsupported"), /PAYSTACK_PRICE_CATALOG_INVALID/);
+  assert.throws(() => getPaystackPrice("below-minimum"), /PAYSTACK_PRICE_CATALOG_INVALID/);
+});
+
+test("creates a deterministic SHA-256 webhook event key", () => {
+  assert.equal(createWebhookEventKey(rawBody), createWebhookEventKey(Buffer.from(rawBody)));
+  assert.notEqual(createWebhookEventKey(rawBody), createWebhookEventKey(Buffer.from("different")));
+});

@@ -18,7 +18,8 @@ Status: discovery baseline, not a legally certified election specification.
 - Payment is separate from eligibility and ballot casting; successful payment never automatically casts a vote.
 - Platform billing is separate from participation payments.
 - Support subscriptions, per-process, usage-based, premium features, institutional contracts, discounts and trials.
-- Provider-independent payment abstraction; Kenya-first integrations may include mobile money, cards and banks. Settlement arrangements require contractual and regulatory review.
+- Paystack is selected for initial organization platform billing (subscriptions and service fees). Payment-provider abstraction remains a future boundary for additional providers; Kenya-first payment methods may include mobile money, cards and banks. Settlement arrangements require contractual and regulatory review.
+- Paystack payments are separate from voter eligibility and ballot casting. Payment success never proves a voter is eligible or has submitted a ballot.
 - Multi-currency support; preserve original currency and amount, exchange-rate source and timestamp.
 
 ## Organizations, identity and permissions

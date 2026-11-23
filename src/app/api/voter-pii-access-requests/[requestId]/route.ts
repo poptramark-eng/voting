@@ -47,13 +47,12 @@ export async function GET(_request: Request, context: RouteContext) {
     }
 
     const item = requestResult.data;
-    const effectiveStatus =
-      item.status === "ACTIVE" && item.expires_at && new Date(item.expires_at).getTime() <= Date.now()
-        ? "EXPIRED"
-        : item.status;
+    const isExpired =
+      (item.status === "ACTIVE" && item.expires_at && new Date(item.expires_at).getTime() <= Date.now()) ||
+      (item.status === "PENDING" && new Date(item.requested_expires_at).getTime() <= Date.now());
 
     return NextResponse.json(
-      { request: { ...item, effectiveStatus }, approvals: approvalResult.data ?? [] },
+      { request: { ...item, effectiveStatus: isExpired ? "EXPIRED" : item.status }, approvals: approvalResult.data ?? [] },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
