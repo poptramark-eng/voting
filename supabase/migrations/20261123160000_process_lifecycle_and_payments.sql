@@ -240,7 +240,7 @@ begin
     raise exception 'Authenticated application identity is required' using errcode = '28000';
   end if;
 
-  select p.*, e.organization_id
+  select p, e.organization_id
   into process_row, organization_id
   from public.voting_processes p
   join public.voting_events e on e.id = p.event_id
@@ -340,7 +340,7 @@ begin
     raise exception 'A suspension reason of 10 to 2000 characters is required' using errcode = '22023';
   end if;
 
-  select p.*, e.organization_id
+  select p, e.organization_id
   into process_row, organization_id
   from public.voting_processes p
   join public.voting_events e on e.id = p.event_id
@@ -416,7 +416,7 @@ begin
     raise exception 'A reason, documented review outcome and corrective-actions array are required' using errcode = '22023';
   end if;
 
-  select p.*, e.organization_id
+  select p, e.organization_id
   into process_row, organization_id
   from public.voting_processes p
   join public.voting_events e on e.id = p.event_id
@@ -498,7 +498,7 @@ begin
     raise exception 'A termination reason of 10 to 2000 characters is required' using errcode = '22023';
   end if;
 
-  select p.*, e.organization_id
+  select p, e.organization_id
   into process_row, organization_id
   from public.voting_processes p
   join public.voting_events e on e.id = p.event_id
