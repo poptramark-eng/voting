@@ -138,7 +138,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase.rpc("request_voter_pii_access", {
       target_scope: scope,
       target_event: eventId,
-      target_process: typeof processId === "string" ? processId : null,
+      target_process: typeof processId === "string" ? processId : undefined,
       target_recipient: recipientUserId,
       target_categories: requestedCategories,
       target_purpose: purpose.trim(),
