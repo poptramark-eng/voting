@@ -878,7 +878,7 @@ using (
 
 revoke all on function public.request_voter_pii_access(
   text, uuid, uuid, uuid, text[], text, timestamptz
-) from public, anon;
+) from public, anon, authenticated;
 revoke all on function public.decide_voter_pii_access_request(uuid, text, text)
   from public, anon;
 revoke all on function public.revoke_voter_pii_access(uuid, text)
