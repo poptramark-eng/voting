@@ -148,6 +148,9 @@ create index process_workflow_requests_org_status_idx
   on public.process_workflow_requests(organization_id, status, requested_at desc);
 create index process_workflow_requests_process_idx
   on public.process_workflow_requests(process_id, requested_at desc);
+create unique index process_workflow_one_pending_request_idx
+  on public.process_workflow_requests(process_id)
+  where status = 'PENDING';
 
 create table public.process_workflow_approvals (
   id uuid primary key default gen_random_uuid(),
@@ -689,6 +692,20 @@ begin
     request_id, approver_user_id, decision, comment
   )
   values (target_request, caller_id, decision, nullif(trim(comment), ''));
+
+  insert into public.audit_events (
+    organization_id, actor_user_id, action, resource_type, resource_id, event_data
+  )
+  values (
+    request_row.organization_id, caller_id, 'PROCESS_WORKFLOW_APPROVAL_RECORDED',
+    'process_workflow_request', target_request::text,
+    jsonb_build_object(
+      'process_id', request_row.process_id,
+      'action', request_row.action,
+      'decision', decision,
+      'assurance_tier', request_row.assurance_tier
+    )
+  );
 
   if decision = 'REJECT' then
     if request_row.action = 'APPROVE_PROCESS'
