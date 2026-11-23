@@ -53,11 +53,9 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
       .eq("role", "ELECTION_MANAGER").eq("status", "ACTIVE").maybeSingle(),
   ]);
 
-  const now = Date.now();
-  const assignmentIsActive = (assignment: { expires_at: string | null } | null) =>
-    Boolean(assignment) && (!assignment?.expires_at || new Date(assignment.expires_at).getTime() > now);
+  // The database re-checks assignment expiry and permission on every write.
   const canEdit = ["OWNER", "ADMIN"].includes(membership.role) ||
-    assignmentIsActive(eventAssignment) || assignmentIsActive(processAssignment);
+    Boolean(eventAssignment) || Boolean(processAssignment);
 
   const { data: contests, error: contestsError } = await supabase.from("contests")
     .select("id, title, description, display_order")
