@@ -63,7 +63,7 @@ export function csvCell(value: unknown): string {
         ? JSON.stringify(value)
         : String(value);
 
-  if (/^[\\s]*[=+@-]/.test(text)) text = "'" + text;
+  if (/^[\s]*[=+@-]/.test(text)) text = "'" + text;
   return '"' + text.replace(/"/g, '""') + '"';
 }
 
@@ -74,5 +74,5 @@ export function toCsv(rows: Record<string, unknown>[]): string {
   return [
     columns.map(csvCell).join(","),
     ...rows.map((row) => columns.map((column) => csvCell(row[column])).join(",")),
-  ].join("\\r\\n");
+  ].join("\r\n");
 }
