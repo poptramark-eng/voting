@@ -45,10 +45,11 @@ Status: modular-monolith decision accepted; identity boundary defined; implement
 
 - Foundation: repository standards, domain model, tenancy, identity mapping, access-control tests, migrations and CI.
 - Authentication: provision Auth0 tenant/app, configure Supabase Third-Party Auth and ID-token claim, then implement server-validated session-to-database access.
-- Organization access: membership lifecycle, role-to-permission mapping, organization-scoped routing and tenant-isolation tests. See [organization access model](organization-access-model.md) (proposed; pending product-owner review).
-- Core voting: process configuration, voter register, eligibility, ballot lifecycle and deterministic tallying.
+- Organization access: accepted first-release built-in roles, membership governance, scoped assignments and tenant-isolation tests. See [organization access model](organization-access-model.md).
+- Process governance: initial lifecycle approval, emergency suspension, resumption and termination RPC/API foundation. See [process lifecycle](process-lifecycle.md). Schedule changes, automatic opening/closure, voter-register finalization, recounts and result certification remain future work.
+- Core voting: process configuration, voter register, eligibility, ballot acceptance, cryptographic secrecy protocol and deterministic tallying. Ballot acceptance must not be implemented until the secrecy and verifiability protocol is independently reviewed.
 - Assurance: independent protocol review, audit evidence, verification and dispute workflows.
-- Operations: notifications, payment adapters, reporting, backups, monitoring and recovery.
+- Operations and billing: Paystack organization-billing checkout and webhook foundation. Subscription entitlement provisioning, refunds, settlement reconciliation, reports, backups, monitoring and recovery remain future work. See [Paystack integration](../payments/paystack-integration.md).
 - Expansion: mobile, offline, deeper integrations, dedicated tenancy and self-hosted operations.
 
 ## Architecture decisions still open
