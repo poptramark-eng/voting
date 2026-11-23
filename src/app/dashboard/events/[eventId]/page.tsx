@@ -54,10 +54,8 @@ export default async function EventWorkspacePage({ params }: PageProps) {
     .eq("status", "ACTIVE")
     .maybeSingle();
 
-  const eventManagerAssignmentIsActive =
-    Boolean(eventAssignment) &&
-    (!eventAssignment?.expires_at || new Date(eventAssignment.expires_at).getTime() > Date.now());
-  const canCreate = ["OWNER", "ADMIN"].includes(membership.role) || eventManagerAssignmentIsActive;
+  // The database re-checks assignment expiry and permission on every write.
+  const canCreate = ["OWNER", "ADMIN"].includes(membership.role) || Boolean(eventAssignment);
 
   return (
     <main className="shell" style={{ paddingTop: 40, paddingBottom: 64 }}>
