@@ -114,8 +114,15 @@ export function VoterRegisterWorkspace({
   }, [processId]);
 
   useEffect(() => {
-    void loadRows(0);
-    void loadRequests();
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      void loadRows(0);
+      void loadRequests();
+    });
+    return () => {
+      active = false;
+    };
   }, [loadRows, loadRequests]);
 
   async function requestPiiAccess() {
@@ -209,7 +216,7 @@ export function VoterRegisterWorkspace({
       <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
         <div>
           <h3 style={{ fontSize: 20, margin: "6px 0" }}>Register and eligibility review</h3>
-          <p className="muted">Review the voter list under the process's access and assurance controls.</p>
+          <p className="muted">Review the voter list under the process&apos; access and assurance controls.</p>
         </div>
         <button className="button secondary" type="button" onClick={() => { void loadRows(offset); void loadRequests(); }} disabled={loadingRows}>
           Refresh
