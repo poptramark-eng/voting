@@ -339,10 +339,11 @@ as $function$
 declare
   suspended_row record;
 begin
-  if tg_op = 'UPDATE'
-     and private.assurance_tier_rank(new.assurance_tier)
-         <= private.assurance_tier_rank(old.assurance_tier) then
-    return new;
+  if tg_op = 'UPDATE' then
+    if private.assurance_tier_rank(new.assurance_tier)
+       <= private.assurance_tier_rank(old.assurance_tier) then
+      return new;
+    end if;
   end if;
 
   for suspended_row in
