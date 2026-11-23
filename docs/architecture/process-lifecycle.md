@@ -44,6 +44,8 @@ Termination is irreversible. A replacement vote must be created as a new process
 - Scoped roles do not grant OWNER/ADMIN approval authority.
 - Assurance tier is read from the process row; it is never accepted from the request payload.
 - Process assurance cannot be lower than the parent event assurance.
+- Only one PENDING workflow request may exist for a process at a time.
+- Each approval or rejection is recorded in both the approval ledger and the organization audit log.
 - If the process version changes while a workflow request is pending, the request is marked CANCELLED as stale.
 - Approval records, lifecycle events and corresponding audit events are written within the same database transaction as the transition.
 
@@ -69,6 +71,8 @@ An OPEN process must first be emergency-suspended. A termination request require
 
 Termination is not deletion. The process, configuration, voter-register evidence, ballots, approvals, audit records and reports must be retained under the applicable retention and privacy rules. The current migration does not delete any of these records.
 
+Public-election category creation is disabled in the first release at both the API and database constraint layers. Removing that restriction requires jurisdiction-specific legal authorization, independent security assurance and a separate product decision.
+
 ## Database objects
 
 Migration: `supabase/migrations/20261123160000_process_lifecycle_and_payments.sql`
@@ -82,6 +86,8 @@ Migration: `supabase/migrations/20261123160000_process_lifecycle_and_payments.sq
 - `public.open_scheduled_process`
 - `public.close_expired_process`
 - `public.emergency_suspend_process`
+- `public.open_scheduled_process`
+- `public.close_expired_process`
 - `public.request_process_resumption`
 - `public.request_process_termination`
 - `public.approve_process_workflow_request`
@@ -99,6 +105,22 @@ The RPCs are SECURITY DEFINER functions with an empty search path, explicit memb
 ```
 
 The process must be DRAFT, have a future opening time, a later closing time, and at least one contest containing a ballot item.
+
+### Open a scheduled process
+
+```json
+{ "action": "open_scheduled" }
+```
+
+An active OWNER or ADMIN can invoke this only after the approved `opens_at` time and before `closes_at`.
+
+### Close an expired process
+
+```json
+{ "action": "close_expired" }
+```
+
+An active OWNER or ADMIN can invoke this only at or after the approved `closes_at` time. Early closure is not provided by this endpoint; use emergency suspension for an urgent stop.
 
 ### Emergency suspension
 
