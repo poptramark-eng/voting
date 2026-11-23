@@ -60,3 +60,13 @@ test("an invitation cannot silently reactivate a removed OWNER or ADMIN", () => 
   assert.match(reactivationFix, /existing_membership\.role in \('OWNER', 'ADMIN'\)/);
   assert.match(reactivationFix, /must be explicitly demoted by an OWNER before re-invitation/);
 });
+
+const existingMembershipFix = readFileSync(
+  new URL("../supabase/migrations/20261123231655_harden_invitation_existing_memberships.sql", import.meta.url),
+  "utf8"
+);
+
+test("invitation creation rejects already invited, suspended, active, and privileged memberships", () => {
+  assert.match(existingMembershipFix, /m\.status in \('ACTIVE', 'SUSPENDED', 'INVITED'\)/);
+  assert.match(existingMembershipFix, /m\.role in \('OWNER', 'ADMIN'\)/);
+});
