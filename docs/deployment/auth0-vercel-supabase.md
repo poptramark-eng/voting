@@ -18,7 +18,7 @@ The database contains `public.app_users` with:
 
 `private.current_app_user_id()` resolves the current JWT subject against `app_users.auth_subject`. RLS helper functions use this internal UUID.
 
-Migration `20261123170000_remove_supabase_auth_foreign_keys_for_auth0.sql` removes the old foreign keys to `auth.users`. Domain foreign keys to `app_users` remain.
+Migration `20261123144623_remove_supabase_auth_foreign_keys_for_auth0.sql` removes the old foreign keys to `auth.users`. Domain foreign keys to `app_users` remain.
 
 ## Configure Supabase Third-Party Auth
 
