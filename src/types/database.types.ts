@@ -436,8 +436,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_process_workflow_request: {
+        Args: { target_request: string; decision: string; comment?: string | null }
+        Returns: string
+      }
       create_organization: {
         Args: { org_name: string; org_slug: string }
+        Returns: string
+      }
+      emergency_suspend_process: {
+        Args: { target_process: string; reason: string; evidence?: Json }
+        Returns: string
+      }
+      request_process_resumption: {
+        Args: {
+          target_process: string
+          reason: string
+          review_outcome: string
+          corrective_actions?: Json
+        }
+        Returns: string
+      }
+      request_process_termination: {
+        Args: { target_process: string; reason: string; evidence?: Json }
+        Returns: string
+      }
+      submit_process_for_approval: {
+        Args: { target_process: string }
         Returns: string
       }
     }
