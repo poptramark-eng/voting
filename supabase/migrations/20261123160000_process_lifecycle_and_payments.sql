@@ -583,6 +583,145 @@ begin
 end;
 $function$;
 
+
+create or replace function public.open_scheduled_process(target_process uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  caller_id uuid := private.current_app_user_id();
+  process_row public.voting_processes%rowtype;
+  organization_id uuid;
+  lifecycle_event_id uuid;
+begin
+  if caller_id is null then
+    raise exception 'Authenticated application identity is required' using errcode = '28000';
+  end if;
+
+  select p, e.organization_id
+  into process_row, organization_id
+  from public.voting_processes p
+  join public.voting_events e on e.id = p.event_id
+  where p.id = target_process
+  for update of p;
+
+  if not found then
+    raise exception 'Voting process not found' using errcode = 'P0002';
+  end if;
+
+  if not private.has_org_role(
+    organization_id,
+    array['OWNER','ADMIN']::public.organization_member_role[]
+  ) then
+    raise exception 'Only an active organization OWNER or ADMIN can open a scheduled process' using errcode = '42501';
+  end if;
+
+  if process_row.status <> 'SCHEDULED'
+     or process_row.opens_at is null
+     or process_row.closes_at is null
+     or process_row.opens_at > now()
+     or process_row.closes_at <= now() then
+    raise exception 'Process is not within its approved opening window' using errcode = '22023';
+  end if;
+
+  update public.voting_processes
+  set status = 'OPEN', updated_at = now()
+  where id = target_process;
+
+  insert into public.process_lifecycle_events (
+    organization_id, process_id, actor_user_id, action,
+    from_status, to_status, reason
+  )
+  values (
+    organization_id, target_process, caller_id, 'PROCESS_OPENED',
+    'SCHEDULED', 'OPEN', 'Approved schedule reached; process opened by an authorized manager.'
+  )
+  returning id into lifecycle_event_id;
+
+  insert into public.audit_events (
+    organization_id, actor_user_id, action, resource_type, resource_id, event_data
+  )
+  values (
+    organization_id, caller_id, 'PROCESS_OPENED',
+    'voting_process', target_process::text,
+    jsonb_build_object('lifecycle_event_id', lifecycle_event_id, 'opens_at', process_row.opens_at)
+  );
+
+  return lifecycle_event_id;
+end;
+$function$;
+
+create or replace function public.close_expired_process(target_process uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  caller_id uuid := private.current_app_user_id();
+  process_row public.voting_processes%rowtype;
+  organization_id uuid;
+  lifecycle_event_id uuid;
+begin
+  if caller_id is null then
+    raise exception 'Authenticated application identity is required' using errcode = '28000';
+  end if;
+
+  select p, e.organization_id
+  into process_row, organization_id
+  from public.voting_processes p
+  join public.voting_events e on e.id = p.event_id
+  where p.id = target_process
+  for update of p;
+
+  if not found then
+    raise exception 'Voting process not found' using errcode = 'P0002';
+  end if;
+
+  if not private.has_org_role(
+    organization_id,
+    array['OWNER','ADMIN']::public.organization_member_role[]
+  ) then
+    raise exception 'Only an active organization OWNER or ADMIN can close an expired process' using errcode = '42501';
+  end if;
+
+  if process_row.status not in ('SCHEDULED', 'OPEN')
+     or process_row.closes_at is null
+     or process_row.closes_at > now() then
+    raise exception 'Process has not reached its approved closing time' using errcode = '22023';
+  end if;
+
+  update public.voting_processes
+  set status = 'CLOSED', updated_at = now()
+  where id = target_process;
+
+  insert into public.process_lifecycle_events (
+    organization_id, process_id, actor_user_id, action,
+    from_status, to_status, reason
+  )
+  values (
+    organization_id, target_process, caller_id,
+    case when process_row.status = 'OPEN' then 'PROCESS_CLOSED' else 'PROCESS_WINDOW_EXPIRED' end,
+    process_row.status, 'CLOSED',
+    'Approved closing time reached; process closed by an authorized manager.'
+  )
+  returning id into lifecycle_event_id;
+
+  insert into public.audit_events (
+    organization_id, actor_user_id, action, resource_type, resource_id, event_data
+  )
+  values (
+    organization_id, caller_id, 'PROCESS_CLOSED',
+    'voting_process', target_process::text,
+    jsonb_build_object('lifecycle_event_id', lifecycle_event_id, 'closes_at', process_row.closes_at)
+  );
+
+  return lifecycle_event_id;
+end;
+$function$;
+
 create or replace function public.approve_process_workflow_request(
   target_request uuid,
   decision text,
@@ -854,6 +993,11 @@ revoke all on function private.enforce_process_assurance_floor() from public, an
 revoke all on function private.propagate_event_assurance_floor() from public, anon, authenticated;
 revoke all on function private.required_process_approvals(public.assurance_tier) from public, anon, authenticated;
 revoke all on function private.create_process_workflow_request(uuid, uuid, uuid, text, text, public.assurance_tier, timestamptz, jsonb) from public, anon, authenticated;
+
+revoke all on function public.open_scheduled_process(uuid) from public, anon;
+revoke all on function public.close_expired_process(uuid) from public, anon;
+grant execute on function public.open_scheduled_process(uuid) to authenticated;
+grant execute on function public.close_expired_process(uuid) to authenticated;
 
 revoke all on function public.submit_process_for_approval(uuid) from public, anon;
 revoke all on function public.emergency_suspend_process(uuid, text, jsonb) from public, anon;
