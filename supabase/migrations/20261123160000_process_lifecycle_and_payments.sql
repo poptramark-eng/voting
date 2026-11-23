@@ -2,6 +2,12 @@
 -- This migration is intentionally committed to the feature branch first.
 -- Review migration history alignment before applying it to the hosted project.
 
+-- Public-election workflows remain disabled until jurisdiction-specific legal,
+-- regulatory, security and operational authorization has been independently approved.
+alter table public.voting_events
+  add constraint voting_events_public_election_disabled
+  check (category <> 'PUBLIC_ELECTION');
+
 -- Process assurance is at least as strong as its parent event.
 alter table public.voting_processes
   add column assurance_tier public.assurance_tier;
