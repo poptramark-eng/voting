@@ -33,7 +33,7 @@ Auth0 subjects (for example, `auth0|...`) are strings, not UUIDs. Existing datab
 - A trusted server-side identity synchronization operation must provision/update `app_users` after validating the Auth0 session. Never accept an arbitrary `sub` from browser input.
 - The `app_users` table is inaccessible to ordinary clients; only the server-side service-role client can synchronize it.
 
-The migration `20261123160000_auth0_identity_mapping.sql` implements the mapping and updates the organization-creation and creator policies. The migration has been applied and the generated TypeScript database types refreshed.
+The migration `20261123144400_auth0_identity_mapping.sql` implements the mapping and updates the organization-creation and creator policies. The migration has been applied and the generated TypeScript database types refreshed.
 
 ## Token and session rules
 
