@@ -780,6 +780,7 @@ create table public.payment_transactions (
   initiated_by uuid not null references public.app_users(id) on delete restrict,
   provider text not null default 'PAYSTACK' check (provider = 'PAYSTACK'),
   provider_reference text not null unique check (length(trim(provider_reference)) between 8 and 120),
+  idempotency_key text not null check (length(trim(idempotency_key)) between 8 and 128),
   provider_transaction_id text,
   price_code text not null check (length(trim(price_code)) between 1 and 100),
   amount_minor bigint not null check (amount_minor > 0),
@@ -790,6 +791,10 @@ create table public.payment_transactions (
   updated_at timestamptz not null default now(),
   verified_at timestamptz
 );
+
+alter table public.payment_transactions
+  add constraint payment_transactions_org_idempotency_key
+  unique (organization_id, idempotency_key);
 
 create index payment_transactions_org_created_idx
   on public.payment_transactions(organization_id, created_at desc);
@@ -822,6 +827,115 @@ create table public.payment_webhook_events (
 alter table public.payment_webhook_events enable row level security;
 revoke all on public.payment_webhook_events from public, anon, authenticated;
 grant all on public.payment_webhook_events to service_role;
+
+
+create or replace function public.complete_paystack_payment(
+  target_reference text,
+  target_amount_minor bigint,
+  target_currency text,
+  target_provider_transaction_id text,
+  target_event_key text,
+  target_event_type text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  payment_row public.payment_transactions%rowtype;
+begin
+  if (select auth.jwt() ->> 'role') is distinct from 'service_role' then
+    raise exception 'Service role is required' using errcode = '42501';
+  end if;
+
+  select * into payment_row
+  from public.payment_transactions
+  where provider_reference = target_reference
+  for update;
+
+  if not found then
+    insert into public.payment_webhook_events (
+      event_key, event_type, provider_reference, processed_at
+    )
+    values (
+      target_event_key, 'charge.success.unmatched', target_reference, now()
+    )
+    on conflict (event_key) do nothing;
+    return false;
+  end if;
+
+  if payment_row.amount_minor <> target_amount_minor
+     or payment_row.currency <> target_currency then
+    insert into public.payment_webhook_events (
+      event_key, event_type, provider_reference, processed_at
+    )
+    values (
+      target_event_key, 'charge.success.amount_or_currency_mismatch',
+      target_reference, now()
+    )
+    on conflict (event_key) do nothing;
+    return false;
+  end if;
+
+  if payment_row.status = 'SUCCEEDED' then
+    insert into public.payment_webhook_events (
+      event_key, event_type, provider_reference, processed_at
+    )
+    values (
+      target_event_key, target_event_type, target_reference, now()
+    )
+    on conflict (event_key) do nothing;
+    return false;
+  end if;
+
+  if payment_row.status not in ('INITIALIZING', 'PENDING') then
+    insert into public.payment_webhook_events (
+      event_key, event_type, provider_reference, processed_at
+    )
+    values (
+      target_event_key, target_event_type || '.ignored', target_reference, now()
+    )
+    on conflict (event_key) do nothing;
+    return false;
+  end if;
+
+  update public.payment_transactions
+  set status = 'SUCCEEDED',
+      provider_transaction_id = target_provider_transaction_id,
+      verified_at = now(),
+      updated_at = now()
+  where id = payment_row.id;
+
+  insert into public.payment_webhook_events (
+    event_key, event_type, provider_reference, processed_at
+  )
+  values (
+    target_event_key, target_event_type, target_reference, now()
+  )
+  on conflict (event_key) do nothing;
+
+  insert into public.audit_events (
+    organization_id, actor_user_id, action, resource_type, resource_id, event_data
+  )
+  values (
+    payment_row.organization_id, null, 'PAYMENT_SUCCEEDED',
+    'payment_transaction', payment_row.id::text,
+    jsonb_build_object(
+      'provider', 'PAYSTACK',
+      'provider_reference', target_reference,
+      'amount_minor', payment_row.amount_minor,
+      'currency', payment_row.currency,
+      'price_code', payment_row.price_code
+    )
+  );
+
+  return true;
+end;
+$function$;
+
+revoke all on function public.complete_paystack_payment(text, bigint, text, text, text, text) from public, anon, authenticated;
+grant execute on function public.complete_paystack_payment(text, bigint, text, text, text, text) to service_role;
 
 comment on table public.process_lifecycle_events is
   'Append-only process lifecycle evidence. Ballot contents and voter-to-ballot linkage must never be stored here.';
