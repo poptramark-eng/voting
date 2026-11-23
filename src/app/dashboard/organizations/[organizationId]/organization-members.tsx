@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { FormEvent } from "react";
 
 type Member = {
   membership_id: string;
@@ -74,7 +75,7 @@ export function OrganizationMembers({
     }));
   }
 
-  async function createInvitation(event: React.FormEvent<HTMLFormElement>) {
+  async function createInvitation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (creating) return;
     setCreating(true);
