@@ -65,7 +65,7 @@ Overlapping pending or unexpired active grants for the same recipient/event are 
 
 ## Revocation and audit
 
-An active OWNER or ADMIN can revoke a pending or active request early with a reason. Membership suspension/removal, role-assignment revocation/expiry, grant expiry, or an assurance-tier increase independently makes the access check fail closed.
+An active OWNER or ADMIN can revoke a pending, active or suspended request early with a reason. Membership suspension/removal and explicit event/process assignment revocation or downgrade automatically suspend affected active grants (and mark affected pending requests stale), with audit evidence. Natural role-assignment expiry and grant expiry are checked on every read and fail closed. Assurance-tier increases also suspend grants whose approved tier is no longer sufficient.
 
 The database records:
 - request creation and exact purpose/scope/categories/tier/expiry;
