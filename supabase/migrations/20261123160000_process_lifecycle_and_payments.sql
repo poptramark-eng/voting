@@ -281,6 +281,7 @@ insert into private.scoped_role_permissions (role, permission) values
   ('ELECTION_MANAGER', 'process.create'),
   ('ELECTION_MANAGER', 'process.update'),
   ('ELECTION_MANAGER', 'process.submit'),
+  ('ELECTION_MANAGER', 'process.lifecycle.read'),
   ('ELECTION_MANAGER', 'contest.read'),
   ('ELECTION_MANAGER', 'contest.manage'),
   ('ELECTION_MANAGER', 'ballot_structure.read'),
@@ -937,6 +938,7 @@ create policy "governance roles can read process lifecycle events"
 on public.process_lifecycle_events for select to authenticated
 using (
   private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  or private.has_process_permission(process_id, 'process.lifecycle.read')
   or private.has_process_permission(process_id, 'audit.read')
 );
 
@@ -944,6 +946,7 @@ create policy "governance roles can read process workflow requests"
 on public.process_workflow_requests for select to authenticated
 using (
   private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  or private.has_process_permission(process_id, 'process.lifecycle.read')
   or private.has_process_permission(process_id, 'audit.read')
 );
 
