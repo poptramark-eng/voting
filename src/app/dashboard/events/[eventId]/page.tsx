@@ -47,17 +47,18 @@ export default async function EventWorkspacePage({ params }: PageProps) {
   if (!organization) notFound();
   if (error) throw new Error("Unable to load voting processes.");
 
-  const { data: eventAssignment } = await supabase.from("event_role_assignments")
-    .select("id, expires_at")
-    .eq("event_id", eventId)
-    .eq("user_id", appUser.id)
-    .eq("role", "ELECTION_MANAGER")
-    .eq("status", "ACTIVE")
-    .maybeSingle();
+  const canGovern = ["OWNER", "ADMIN"].includes(membership.role);
+  const { data: canCreateFromScope, error: scopedPermissionError } = canGovern
+    ? { data: false, error: null }
+    : await supabase.rpc("has_current_event_permission", {
+        target_event: eventId,
+        target_permission: "process.create",
+      });
+  if (scopedPermissionError) throw new Error("Unable to verify event-scoped process permissions.");
 
-  // The database re-checks assignment expiry and permission on every write.
-  const canCreate = ["OWNER", "ADMIN"].includes(membership.role) || Boolean(eventAssignment);
-  const canManageAssignments = ["OWNER", "ADMIN"].includes(membership.role);
+  // Database permission checks include event assignment status and expiry.
+  const canCreate = canGovern || Boolean(canCreateFromScope);
+  const canManageAssignments = canGovern;
   let initialMembers: Array<{
     user_id: string;
     email: string | null;
