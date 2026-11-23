@@ -171,6 +171,74 @@ export type Database = {
           },
         ]
       }
+      event_role_assignments: {
+        Row: {
+          assigned_by: string
+          created_at: string
+          event_id: string
+          expires_at: string | null
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["organization_member_role"]
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by: string
+          created_at?: string
+          event_id: string
+          expires_at?: string | null
+          id?: string
+          organization_id: string
+          role: Database["public"]["Enums"]["organization_member_role"]
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string
+          created_at?: string
+          event_id?: string
+          expires_at?: string | null
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["organization_member_role"]
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_role_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_role_assignments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "voting_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_role_assignments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_role_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_memberships: {
         Row: {
           created_at: string
@@ -251,6 +319,544 @@ export type Database = {
           {
             foreignKeyName: "organizations_created_by_app_users_fk"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_transactions: {
+        Row: {
+          amount_minor: number
+          checkout_url: string | null
+          created_at: string
+          currency: string
+          id: string
+          idempotency_key: string
+          initiated_by: string
+          organization_id: string
+          price_code: string
+          provider: string
+          provider_reference: string
+          provider_transaction_id: string | null
+          status: Database["public"]["Enums"]["payment_transaction_status"]
+          updated_at: string
+          verified_at: string | null
+        }
+        Insert: {
+          amount_minor: number
+          checkout_url?: string | null
+          created_at?: string
+          currency: string
+          id?: string
+          idempotency_key: string
+          initiated_by: string
+          organization_id: string
+          price_code: string
+          provider?: string
+          provider_reference: string
+          provider_transaction_id?: string | null
+          status?: Database["public"]["Enums"]["payment_transaction_status"]
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Update: {
+          amount_minor?: number
+          checkout_url?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          idempotency_key?: string
+          initiated_by?: string
+          organization_id?: string
+          price_code?: string
+          provider?: string
+          provider_reference?: string
+          provider_transaction_id?: string | null
+          status?: Database["public"]["Enums"]["payment_transaction_status"]
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_transactions_initiated_by_fkey"
+            columns: ["initiated_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_webhook_events: {
+        Row: {
+          attempt_count: number
+          event_data: Json
+          event_key: string
+          event_type: string
+          last_error: string | null
+          next_attempt_at: string | null
+          processed_at: string | null
+          processing_started_at: string | null
+          provider: string
+          provider_reference: string | null
+          received_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          event_data?: Json
+          event_key: string
+          event_type: string
+          last_error?: string | null
+          next_attempt_at?: string | null
+          processed_at?: string | null
+          processing_started_at?: string | null
+          provider?: string
+          provider_reference?: string | null
+          received_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          event_data?: Json
+          event_key?: string
+          event_type?: string
+          last_error?: string | null
+          next_attempt_at?: string | null
+          processed_at?: string | null
+          processing_started_at?: string | null
+          provider?: string
+          provider_reference?: string | null
+          received_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      process_lifecycle_events: {
+        Row: {
+          action: string
+          actor_user_id: string
+          evidence: Json
+          from_status: Database["public"]["Enums"]["process_status"]
+          id: string
+          occurred_at: string
+          organization_id: string
+          process_id: string
+          reason: string
+          to_status: Database["public"]["Enums"]["process_status"]
+          workflow_request_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          evidence?: Json
+          from_status: Database["public"]["Enums"]["process_status"]
+          id?: string
+          occurred_at?: string
+          organization_id: string
+          process_id: string
+          reason: string
+          to_status: Database["public"]["Enums"]["process_status"]
+          workflow_request_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          evidence?: Json
+          from_status?: Database["public"]["Enums"]["process_status"]
+          id?: string
+          occurred_at?: string
+          organization_id?: string
+          process_id?: string
+          reason?: string
+          to_status?: Database["public"]["Enums"]["process_status"]
+          workflow_request_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "process_lifecycle_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_lifecycle_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_lifecycle_events_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "voting_processes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_lifecycle_events_workflow_request_fk"
+            columns: ["workflow_request_id"]
+            isOneToOne: false
+            referencedRelation: "process_workflow_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      process_role_assignments: {
+        Row: {
+          assigned_by: string
+          created_at: string
+          event_id: string
+          expires_at: string | null
+          id: string
+          organization_id: string
+          process_id: string
+          role: Database["public"]["Enums"]["organization_member_role"]
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by: string
+          created_at?: string
+          event_id: string
+          expires_at?: string | null
+          id?: string
+          organization_id: string
+          process_id: string
+          role: Database["public"]["Enums"]["organization_member_role"]
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string
+          created_at?: string
+          event_id?: string
+          expires_at?: string | null
+          id?: string
+          organization_id?: string
+          process_id?: string
+          role?: Database["public"]["Enums"]["organization_member_role"]
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "process_role_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_role_assignments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "voting_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_role_assignments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_role_assignments_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "voting_processes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_role_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      process_workflow_approvals: {
+        Row: {
+          approver_user_id: string
+          comment: string | null
+          decided_at: string
+          decision: string
+          id: string
+          request_id: string
+        }
+        Insert: {
+          approver_user_id: string
+          comment?: string | null
+          decided_at?: string
+          decision: string
+          id?: string
+          request_id: string
+        }
+        Update: {
+          approver_user_id?: string
+          comment?: string | null
+          decided_at?: string
+          decision?: string
+          id?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "process_workflow_approvals_approver_user_id_fkey"
+            columns: ["approver_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_workflow_approvals_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "process_workflow_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      process_workflow_requests: {
+        Row: {
+          action: string
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          id: string
+          organization_id: string
+          process_id: string
+          process_updated_at: string
+          reason: string
+          request_data: Json
+          requested_at: string
+          requested_by: string
+          required_approvals: number
+          resolved_at: string | null
+          status: string
+        }
+        Insert: {
+          action: string
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          id?: string
+          organization_id: string
+          process_id: string
+          process_updated_at: string
+          reason: string
+          request_data?: Json
+          requested_at?: string
+          requested_by: string
+          required_approvals: number
+          resolved_at?: string | null
+          status?: string
+        }
+        Update: {
+          action?: string
+          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
+          id?: string
+          organization_id?: string
+          process_id?: string
+          process_updated_at?: string
+          reason?: string
+          request_data?: Json
+          requested_at?: string
+          requested_by?: string
+          required_approvals?: number
+          resolved_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "process_workflow_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_workflow_requests_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "voting_processes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_workflow_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voter_pii_access_approvals: {
+        Row: {
+          approver_user_id: string
+          comment: string | null
+          decided_at: string
+          decision: string
+          id: string
+          request_id: string
+          request_snapshot: Json
+        }
+        Insert: {
+          approver_user_id: string
+          comment?: string | null
+          decided_at?: string
+          decision: string
+          id?: string
+          request_id: string
+          request_snapshot: Json
+        }
+        Update: {
+          approver_user_id?: string
+          comment?: string | null
+          decided_at?: string
+          decision?: string
+          id?: string
+          request_id?: string
+          request_snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voter_pii_access_approvals_approver_user_id_fkey"
+            columns: ["approver_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voter_pii_access_approvals_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "voter_pii_access_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voter_pii_access_requests: {
+        Row: {
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          created_at: string
+          event_id: string
+          expires_at: string | null
+          granted_at: string | null
+          id: string
+          organization_id: string
+          permitted_categories: string[]
+          process_id: string | null
+          purpose: string
+          recipient_user_id: string
+          requested_by: string
+          requested_expires_at: string
+          required_approvals: number
+          resolved_at: string | null
+          revocation_reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          scope_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          created_at?: string
+          event_id: string
+          expires_at?: string | null
+          granted_at?: string | null
+          id?: string
+          organization_id: string
+          permitted_categories: string[]
+          process_id?: string | null
+          purpose: string
+          recipient_user_id: string
+          requested_by: string
+          requested_expires_at: string
+          required_approvals: number
+          resolved_at?: string | null
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          scope_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
+          created_at?: string
+          event_id?: string
+          expires_at?: string | null
+          granted_at?: string | null
+          id?: string
+          organization_id?: string
+          permitted_categories?: string[]
+          process_id?: string | null
+          purpose?: string
+          recipient_user_id?: string
+          requested_by?: string
+          requested_expires_at?: string
+          required_approvals?: number
+          resolved_at?: string | null
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          scope_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voter_pii_access_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "voting_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voter_pii_access_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voter_pii_access_requests_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "voting_processes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voter_pii_access_requests_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voter_pii_access_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voter_pii_access_requests_revoked_by_fkey"
+            columns: ["revoked_by"]
             isOneToOne: false
             referencedRelation: "app_users"
             referencedColumns: ["id"]
@@ -368,327 +974,6 @@ export type Database = {
           },
         ]
       }
-      payment_transactions: {
-        Row: {
-          id: string
-          organization_id: string
-          initiated_by: string
-          provider: string
-          provider_reference: string
-          idempotency_key: string
-          provider_transaction_id: string | null
-          price_code: string
-          amount_minor: number
-          currency: string
-          status: Database["public"]["Enums"]["payment_transaction_status"]
-          checkout_url: string | null
-          created_at: string
-          updated_at: string
-          verified_at: string | null
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          initiated_by: string
-          provider?: string
-          provider_reference: string
-          idempotency_key: string
-          provider_transaction_id?: string | null
-          price_code: string
-          amount_minor: number
-          currency: string
-          status?: Database["public"]["Enums"]["payment_transaction_status"]
-          checkout_url?: string | null
-          created_at?: string
-          updated_at?: string
-          verified_at?: string | null
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          initiated_by?: string
-          provider?: string
-          provider_reference?: string
-          idempotency_key?: string
-          provider_transaction_id?: string | null
-          price_code?: string
-          amount_minor?: number
-          currency?: string
-          status?: Database["public"]["Enums"]["payment_transaction_status"]
-          checkout_url?: string | null
-          created_at?: string
-          updated_at?: string
-          verified_at?: string | null
-        }
-        Relationships: []
-      }
-      payment_webhook_events: {
-        Row: {
-          event_key: string
-          provider: string
-          event_type: string
-          provider_reference: string | null
-          event_data: Json
-          status: string
-          attempt_count: number
-          last_error: string | null
-          next_attempt_at: string | null
-          processing_started_at: string | null
-          received_at: string
-          processed_at: string | null
-          updated_at: string
-        }
-        Insert: {
-          event_key: string
-          provider?: string
-          event_type: string
-          provider_reference?: string | null
-          event_data?: Json
-          status?: string
-          attempt_count?: number
-          last_error?: string | null
-          next_attempt_at?: string | null
-          processing_started_at?: string | null
-          received_at?: string
-          processed_at?: string | null
-          updated_at?: string
-        }
-        Update: {
-          event_key?: string
-          provider?: string
-          event_type?: string
-          provider_reference?: string | null
-          event_data?: Json
-          status?: string
-          attempt_count?: number
-          last_error?: string | null
-          next_attempt_at?: string | null
-          processing_started_at?: string | null
-          received_at?: string
-          processed_at?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      voter_pii_access_requests: {
-        Row: {
-          id: string
-          organization_id: string
-          event_id: string
-          process_id: string | null
-          scope_type: string
-          recipient_user_id: string
-          requested_by: string
-          permitted_categories: string[]
-          purpose: string
-          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
-          required_approvals: number
-          requested_expires_at: string
-          status: string
-          granted_at: string | null
-          expires_at: string | null
-          resolved_at: string | null
-          revoked_by: string | null
-          revoked_at: string | null
-          revocation_reason: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          event_id: string
-          process_id?: string | null
-          scope_type: string
-          recipient_user_id: string
-          requested_by: string
-          permitted_categories: string[]
-          purpose: string
-          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
-          required_approvals: number
-          requested_expires_at: string
-          status?: string
-          granted_at?: string | null
-          expires_at?: string | null
-          resolved_at?: string | null
-          revoked_by?: string | null
-          revoked_at?: string | null
-          revocation_reason?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          event_id?: string
-          process_id?: string | null
-          scope_type?: string
-          recipient_user_id?: string
-          requested_by?: string
-          permitted_categories?: string[]
-          purpose?: string
-          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
-          required_approvals?: number
-          requested_expires_at?: string
-          status?: string
-          granted_at?: string | null
-          expires_at?: string | null
-          resolved_at?: string | null
-          revoked_by?: string | null
-          revoked_at?: string | null
-          revocation_reason?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      voter_pii_access_approvals: {
-        Row: {
-          id: string
-          request_id: string
-          approver_user_id: string
-          decision: string
-          comment: string | null
-          request_snapshot: Json
-          decided_at: string
-        }
-        Insert: {
-          id?: string
-          request_id: string
-          approver_user_id: string
-          decision: string
-          comment?: string | null
-          request_snapshot: Json
-          decided_at?: string
-        }
-        Update: {
-          id?: string
-          request_id?: string
-          approver_user_id?: string
-          decision?: string
-          comment?: string | null
-          request_snapshot?: Json
-          decided_at?: string
-        }
-        Relationships: []
-      }
-      process_lifecycle_events: {
-        Row: {
-          id: string
-          organization_id: string
-          process_id: string
-          actor_user_id: string
-          action: string
-          from_status: Database["public"]["Enums"]["process_status"]
-          to_status: Database["public"]["Enums"]["process_status"]
-          reason: string
-          evidence: Json
-          workflow_request_id: string | null
-          occurred_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          process_id: string
-          actor_user_id: string
-          action: string
-          from_status: Database["public"]["Enums"]["process_status"]
-          to_status: Database["public"]["Enums"]["process_status"]
-          reason: string
-          evidence?: Json
-          workflow_request_id?: string | null
-          occurred_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          process_id?: string
-          actor_user_id?: string
-          action?: string
-          from_status?: Database["public"]["Enums"]["process_status"]
-          to_status?: Database["public"]["Enums"]["process_status"]
-          reason?: string
-          evidence?: Json
-          workflow_request_id?: string | null
-          occurred_at?: string
-        }
-        Relationships: []
-      }
-      process_workflow_approvals: {
-        Row: {
-          id: string
-          request_id: string
-          approver_user_id: string
-          decision: string
-          comment: string | null
-          decided_at: string
-        }
-        Insert: {
-          id?: string
-          request_id: string
-          approver_user_id: string
-          decision: string
-          comment?: string | null
-          decided_at?: string
-        }
-        Update: {
-          id?: string
-          request_id?: string
-          approver_user_id?: string
-          decision?: string
-          comment?: string | null
-          decided_at?: string
-        }
-        Relationships: []
-      }
-      process_workflow_requests: {
-        Row: {
-          id: string
-          organization_id: string
-          process_id: string
-          requested_by: string
-          action: string
-          status: string
-          reason: string
-          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
-          required_approvals: number
-          process_updated_at: string
-          request_data: Json
-          requested_at: string
-          resolved_at: string | null
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          process_id: string
-          requested_by: string
-          action: string
-          status?: string
-          reason: string
-          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
-          required_approvals: number
-          process_updated_at: string
-          request_data?: Json
-          requested_at?: string
-          resolved_at?: string | null
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          process_id?: string
-          requested_by?: string
-          action?: string
-          status?: string
-          reason?: string
-          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
-          required_approvals?: number
-          process_updated_at?: string
-          request_data?: Json
-          requested_at?: string
-          resolved_at?: string | null
-        }
-        Relationships: []
-      }
       voting_processes: {
         Row: {
           assurance_tier: Database["public"]["Enums"]["assurance_tier"]
@@ -761,24 +1046,24 @@ export type Database = {
     }
     Functions: {
       approve_process_workflow_request: {
-        Args: { target_request: string; decision: string; comment?: string | null }
+        Args: { comment?: string; decision: string; target_request: string }
         Returns: string
       }
       assign_event_role: {
         Args: {
           target_event: string
-          target_user: string
+          target_expires_at?: string
           target_role: Database["public"]["Enums"]["organization_member_role"]
-          target_expires_at?: string | null
+          target_user: string
         }
         Returns: string
       }
       assign_process_role: {
         Args: {
+          target_expires_at?: string
           target_process: string
-          target_user: string
           target_role: Database["public"]["Enums"]["organization_member_role"]
-          target_expires_at?: string | null
+          target_user: string
         }
         Returns: string
       }
@@ -792,12 +1077,12 @@ export type Database = {
       }
       complete_paystack_payment: {
         Args: {
-          target_reference: string
           target_amount_minor: number
           target_currency: string
-          target_provider_transaction_id: string
           target_event_key: string
           target_event_type: string
+          target_provider_transaction_id: string
+          target_reference: string
         }
         Returns: boolean
       }
@@ -806,15 +1091,19 @@ export type Database = {
         Returns: string
       }
       decide_voter_pii_access_request: {
-        Args: { target_request: string; target_decision: string; target_comment?: string | null }
+        Args: {
+          target_comment?: string
+          target_decision: string
+          target_request: string
+        }
         Returns: Json
       }
       emergency_suspend_process: {
-        Args: { target_process: string; reason: string; evidence?: Json }
+        Args: { evidence?: Json; reason: string; target_process: string }
         Returns: string
       }
       fail_paystack_webhook_event: {
-        Args: { target_event_key: string; error_message: string }
+        Args: { error_message: string; target_event_key: string }
         Returns: boolean
       }
       open_scheduled_process: {
@@ -822,37 +1111,38 @@ export type Database = {
         Returns: string
       }
       read_voter_register_entries: {
-        Args: { target_process: string; target_access_mode?: string; target_limit?: number; target_offset?: number }
-        Returns: Json
-      }
-      request_voter_pii_access: {
         Args: {
-          target_scope: string
-          target_event: string
-          target_process: string | null
-          target_recipient: string
-          target_categories: string[]
-          target_purpose: string
-          target_expires_at: string
+          target_access_mode?: string
+          target_limit?: number
+          target_offset?: number
+          target_process: string
         }
-        Returns: string
+        Returns: Json
       }
       request_process_resumption: {
         Args: {
-          target_process: string
+          corrective_actions?: Json
           reason: string
           review_outcome: string
-          corrective_actions?: Json
+          target_process: string
         }
         Returns: string
       }
       request_process_termination: {
-        Args: { target_process: string; reason: string; evidence?: Json }
+        Args: { evidence?: Json; reason: string; target_process: string }
         Returns: string
       }
-      revoke_voter_pii_access: {
-        Args: { target_request: string; target_reason: string }
-        Returns: boolean
+      request_voter_pii_access: {
+        Args: {
+          target_categories: string[]
+          target_event: string
+          target_expires_at: string
+          target_process: string
+          target_purpose: string
+          target_recipient: string
+          target_scope: string
+        }
+        Returns: string
       }
       revoke_event_role: {
         Args: { target_event: string; target_user: string }
@@ -862,13 +1152,16 @@ export type Database = {
         Args: { target_process: string; target_user: string }
         Returns: boolean
       }
+      revoke_voter_pii_access: {
+        Args: { target_reason: string; target_request: string }
+        Returns: boolean
+      }
       submit_process_for_approval: {
         Args: { target_process: string }
         Returns: string
       }
     }
     Enums: {
-      payment_transaction_status: "INITIALIZING" | "PENDING" | "SUCCEEDED" | "FAILED" | "ABANDONED" | "REFUNDED"
       assurance_tier: "STANDARD" | "ENHANCED" | "HIGH" | "CRITICAL"
       ballot_format:
         | "SINGLE_CHOICE"
@@ -886,6 +1179,13 @@ export type Database = {
         | "BILLING_MANAGER"
         | "MEMBER"
       organization_member_status: "INVITED" | "ACTIVE" | "SUSPENDED" | "REMOVED"
+      payment_transaction_status:
+        | "INITIALIZING"
+        | "PENDING"
+        | "SUCCEEDED"
+        | "FAILED"
+        | "ABANDONED"
+        | "REFUNDED"
       process_status:
         | "DRAFT"
         | "PENDING_APPROVAL"
@@ -1028,7 +1328,6 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      payment_transaction_status: ["INITIALIZING", "PENDING", "SUCCEEDED", "FAILED", "ABANDONED", "REFUNDED"],
       assurance_tier: ["STANDARD", "ENHANCED", "HIGH", "CRITICAL"],
       ballot_format: [
         "SINGLE_CHOICE",
@@ -1048,6 +1347,14 @@ export const Constants = {
         "MEMBER",
       ],
       organization_member_status: ["INVITED", "ACTIVE", "SUSPENDED", "REMOVED"],
+      payment_transaction_status: [
+        "INITIALIZING",
+        "PENDING",
+        "SUCCEEDED",
+        "FAILED",
+        "ABANDONED",
+        "REFUNDED",
+      ],
       process_status: [
         "DRAFT",
         "PENDING_APPROVAL",
