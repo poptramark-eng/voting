@@ -34,12 +34,13 @@ function csvCell(value: unknown): string {
   return '"' + text.replace(/"/g, '""') + '"';
 }
 
-function toCsv(rows: Record<string, unknown>[]): string {
-  if (rows.length === 0) return "";
-  const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+function toCsv(rows: unknown[]): string {
+  const records = rows.filter(isRecord);
+  if (records.length === 0) return "";
+  const columns = [...new Set(records.flatMap((row) => Object.keys(row)))];
   return [
     columns.map(csvCell).join(","),
-    ...rows.map((row) => columns.map((column) => csvCell(row[column])).join(",")),
+    ...records.map((row) => columns.map((column) => csvCell(row[column])).join(",")),
   ].join("\r\n");
 }
 
