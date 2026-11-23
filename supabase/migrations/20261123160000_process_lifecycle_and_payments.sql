@@ -326,9 +326,9 @@ as $function$
     left join public.process_role_assignments pa
       on pa.process_id = p.id
      and pa.user_id = m.user_id
-    join private.scoped_role_permissions rp
-      on rp.role = case when pa.id is null then ea.role else pa.role end
-     and rp.permission = target_permission
+    join private.scoped_role_permissions event_permission
+      on event_permission.role = ea.role
+     and event_permission.permission = target_permission
     where p.id = target_process
       and ea.organization_id = e.organization_id
       and m.status = 'ACTIVE'
@@ -341,16 +341,11 @@ as $function$
           and pa.event_id = e.id
           and pa.status = 'ACTIVE'
           and (pa.expires_at is null or pa.expires_at > now())
-          and not exists (
+          and exists (
             select 1
-            from private.scoped_role_permissions target_permissions
-            where target_permissions.role = pa.role
-              and not exists (
-                select 1
-                from private.scoped_role_permissions event_permissions
-                where event_permissions.role = ea.role
-                  and event_permissions.permission = target_permissions.permission
-              )
+            from private.scoped_role_permissions process_permission
+            where process_permission.role = pa.role
+              and process_permission.permission = target_permission
           )
         )
       )
@@ -587,19 +582,7 @@ begin
   if event_role is null then
     raise exception 'A valid event-level role assignment is required before process-level narrowing' using errcode = '22023';
   end if;
-  if exists (
-    select 1
-    from private.scoped_role_permissions target_permissions
-    where target_permissions.role = target_role
-      and not exists (
-        select 1
-        from private.scoped_role_permissions event_permissions
-        where event_permissions.role = event_role
-          and event_permissions.permission = target_permissions.permission
-      )
-  ) then
-    raise exception 'A process-level role cannot expand event-level permissions' using errcode = '42501';
-  end if;
+
 
   insert into public.process_role_assignments (
     organization_id, event_id, process_id, user_id, role, status, expires_at, assigned_by
