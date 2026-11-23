@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { Json } from "@/types/database.types";
 
 type RouteContext = { params: Promise<{ processId: string }> };
 
