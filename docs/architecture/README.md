@@ -1,6 +1,6 @@
 # Architecture direction
 
-Status: modular-monolith decision accepted; detailed domain design in progress.
+Status: modular-monolith decision accepted; identity boundary defined; implementation foundation in progress.
 
 ## Core boundaries
 
@@ -28,17 +28,23 @@ Status: modular-monolith decision accepted; detailed domain design in progress.
 ## Adopted implementation direction
 
 - Architecture: modular monolith with explicit domain modules; see [ADR 0001](adr/0001-modular-monolith.md).
-- Application: TypeScript, Next.js App Router as the recommended initial web and server runtime.
+- Application: TypeScript, Next.js App Router (Next.js 16) as the initial web and server runtime.
+- Identity SDK: official Auth0 Next.js SDK v4, using the Next.js 16 `proxy.ts` convention.
+- Identity provider: Auth0. See [ADR 0002](adr/0002-auth0-supabase-identity.md).
+- Authorization: PostgreSQL is authoritative for application users, organization memberships, scoped roles and permissions. Auth0 authenticates; it does not grant tenant roles.
 - Database: PostgreSQL on Supabase as the system of record.
-- Identity: Auth0 for authentication and federation; application database remains authoritative for membership and permissions.
+- Auth0-to-database mapping: immutable Auth0 `sub` maps to internal `app_users.id`; RLS resolves the internal identity with `private.current_app_user_id()`.
+- Supabase access: Supabase Third-Party Auth trusts the Auth0 tenant; the Auth0 ID token carries `role: authenticated` for Postgres role selection.
 - Hosting: Vercel for the Next.js application and bounded request handlers.
+- Auth0/Vercel integration: standard Auth0 tenant/application configuration stored in Vercel environment variables. Do not use the Vercel-native Auth0 integration by default because it provisions a new tenant/application.
 - Cache: Redis is deferred until a measured need exists. It is not authoritative storage.
 - Background work: PostgreSQL transactional outbox first; add a queue/worker only when justified.
-- Auth0/Supabase identity mapping is implemented in migration `20261123144400_auth0_identity_mapping.sql`. Provider-side configuration and first-login provisioning remain to be completed.
+- Identity database migrations: `20261123144400_auth0_identity_mapping` and `20261123170000_remove_supabase_auth_foreign_keys_for_auth0`.
 
 ## Delivery sequence
 
 - Foundation: repository standards, domain model, tenancy, identity mapping, access-control tests, migrations and CI.
+- Authentication: provision Auth0 tenant/app, configure Supabase Third-Party Auth and ID-token claim, then implement server-validated session-to-database access.
 - Core voting: process configuration, voter register, eligibility, ballot lifecycle and deterministic tallying.
 - Assurance: independent protocol review, audit evidence, verification and dispute workflows.
 - Operations: notifications, payment adapters, reporting, backups, monitoring and recovery.
@@ -47,7 +53,8 @@ Status: modular-monolith decision accepted; detailed domain design in progress.
 ## Architecture decisions still open
 
 - Final framework/package versions and application folder structure.
-- Auth0 tenant configuration, Supabase third-party provider setup and identity sync implementation.
+- Auth0 tenant configuration and Supabase Third-Party Auth activation.
+- Vercel project authorization, creation/linking and environment configuration.
 - Transactional outbox schema and worker execution model.
 - End-to-end verifiable voting protocol and cryptographic key management.
 - Tenant isolation strategy refinements and authorization test matrix.
