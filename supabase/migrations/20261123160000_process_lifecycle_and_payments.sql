@@ -172,6 +172,729 @@ create table public.process_workflow_approvals (
 create index process_workflow_approvals_request_idx
   on public.process_workflow_approvals(request_id, decided_at);
 
+
+-- Organization memberships contain organization-wide roles only. Election,
+-- auditor and observer authority is represented by event/process assignments.
+alter table public.organization_memberships
+  add constraint organization_memberships_only_org_roles
+  check (role in ('OWNER', 'ADMIN', 'BILLING_MANAGER', 'MEMBER'));
+
+create table public.event_role_assignments (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete restrict,
+  event_id uuid not null references public.voting_events(id) on delete restrict,
+  user_id uuid not null references public.app_users(id) on delete restrict,
+  role public.organization_member_role not null
+    check (role in ('ELECTION_MANAGER', 'AUDITOR', 'OBSERVER')),
+  status text not null default 'ACTIVE' check (status in ('ACTIVE', 'REVOKED')),
+  expires_at timestamptz,
+  assigned_by uuid not null references public.app_users(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint event_role_assignments_one_role_per_user unique (event_id, user_id)
+);
+
+create table public.process_role_assignments (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete restrict,
+  event_id uuid not null references public.voting_events(id) on delete restrict,
+  process_id uuid not null references public.voting_processes(id) on delete restrict,
+  user_id uuid not null references public.app_users(id) on delete restrict,
+  role public.organization_member_role not null
+    check (role in ('ELECTION_MANAGER', 'AUDITOR', 'OBSERVER')),
+  status text not null default 'ACTIVE' check (status in ('ACTIVE', 'REVOKED')),
+  expires_at timestamptz,
+  assigned_by uuid not null references public.app_users(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint process_role_assignments_one_role_per_user unique (process_id, user_id)
+);
+
+create index event_role_assignments_org_user_idx
+  on public.event_role_assignments(organization_id, user_id, status);
+create index event_role_assignments_event_role_idx
+  on public.event_role_assignments(event_id, role, status);
+create index process_role_assignments_process_role_idx
+  on public.process_role_assignments(process_id, role, status);
+
+alter table public.event_role_assignments enable row level security;
+alter table public.process_role_assignments enable row level security;
+revoke all on public.event_role_assignments, public.process_role_assignments
+  from public, anon, authenticated;
+grant select on public.event_role_assignments, public.process_role_assignments to authenticated;
+
+create policy "members can read their scoped event role assignments"
+on public.event_role_assignments for select to authenticated
+using (
+  user_id = (select private.current_app_user_id())
+  or private.has_org_role(
+    organization_id,
+    array['OWNER','ADMIN']::public.organization_member_role[]
+  )
+);
+
+create policy "members can read their scoped process role assignments"
+on public.process_role_assignments for select to authenticated
+using (
+  user_id = (select private.current_app_user_id())
+  or private.has_org_role(
+    organization_id,
+    array['OWNER','ADMIN']::public.organization_member_role[]
+  )
+);
+
+create table private.scoped_role_permissions (
+  role public.organization_member_role not null
+    check (role in ('ELECTION_MANAGER', 'AUDITOR', 'OBSERVER')),
+  permission text not null,
+  primary key (role, permission)
+);
+
+insert into private.scoped_role_permissions (role, permission) values
+  ('ELECTION_MANAGER', 'event.read'),
+  ('ELECTION_MANAGER', 'event.update'),
+  ('ELECTION_MANAGER', 'process.read'),
+  ('ELECTION_MANAGER', 'process.create'),
+  ('ELECTION_MANAGER', 'process.update'),
+  ('ELECTION_MANAGER', 'process.submit'),
+  ('ELECTION_MANAGER', 'contest.read'),
+  ('ELECTION_MANAGER', 'contest.manage'),
+  ('ELECTION_MANAGER', 'ballot_structure.read'),
+  ('ELECTION_MANAGER', 'ballot_structure.manage'),
+  ('AUDITOR', 'event.read'),
+  ('AUDITOR', 'process.read'),
+  ('AUDITOR', 'contest.read'),
+  ('AUDITOR', 'ballot_structure.read'),
+  ('AUDITOR', 'audit.read'),
+  ('OBSERVER', 'event.read'),
+  ('OBSERVER', 'process.read'),
+  ('OBSERVER', 'contest.read'),
+  ('OBSERVER', 'observer.status.read');
+
+revoke all on private.scoped_role_permissions from public, anon, authenticated;
+
+create or replace function private.has_event_permission(
+  target_event uuid,
+  target_permission text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select exists (
+    select 1
+    from public.event_role_assignments a
+    join public.voting_events e on e.id = a.event_id
+    join public.organization_memberships m
+      on m.organization_id = e.organization_id
+     and m.user_id = a.user_id
+    join private.scoped_role_permissions rp
+      on rp.role = a.role
+     and rp.permission = target_permission
+    where a.event_id = target_event
+      and a.user_id = (select private.current_app_user_id())
+      and a.organization_id = e.organization_id
+      and a.status = 'ACTIVE'
+      and (a.expires_at is null or a.expires_at > now())
+      and m.status = 'ACTIVE'
+  );
+$function$;
+
+create or replace function private.has_process_permission(
+  target_process uuid,
+  target_permission text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select exists (
+    select 1
+    from public.voting_processes p
+    join public.voting_events e on e.id = p.event_id
+    join public.organization_memberships m
+      on m.organization_id = e.organization_id
+     and m.user_id = (select private.current_app_user_id())
+    join public.event_role_assignments ea
+      on ea.event_id = e.id
+     and ea.user_id = m.user_id
+    left join public.process_role_assignments pa
+      on pa.process_id = p.id
+     and pa.user_id = m.user_id
+    join private.scoped_role_permissions event_permission
+      on event_permission.role = ea.role
+     and event_permission.permission = target_permission
+    where p.id = target_process
+      and ea.organization_id = e.organization_id
+      and m.status = 'ACTIVE'
+      and ea.status = 'ACTIVE'
+      and (ea.expires_at is null or ea.expires_at > now())
+      and (
+        pa.id is null
+        or (
+          pa.organization_id = e.organization_id
+          and pa.event_id = e.id
+          and pa.status = 'ACTIVE'
+          and (pa.expires_at is null or pa.expires_at > now())
+          and exists (
+            select 1
+            from private.scoped_role_permissions process_permission
+            where process_permission.role = pa.role
+              and process_permission.permission = target_permission
+          )
+        )
+      )
+  );
+$function$;
+
+revoke all on function private.has_event_permission(uuid, text) from public, anon;
+revoke all on function private.has_process_permission(uuid, text) from public, anon;
+grant execute on function private.has_event_permission(uuid, text) to authenticated;
+grant execute on function private.has_process_permission(uuid, text) to authenticated;
+
+create or replace function public.assign_event_role(
+  target_event uuid,
+  target_user uuid,
+  target_role public.organization_member_role,
+  target_expires_at timestamptz default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  caller_id uuid := private.current_app_user_id();
+  target_org uuid;
+  assignment_id uuid;
+begin
+  if caller_id is null then
+    raise exception 'Authenticated application identity is required' using errcode = '28000';
+  end if;
+  if target_role is null or target_role not in ('ELECTION_MANAGER', 'AUDITOR', 'OBSERVER') then
+    raise exception 'Only ELECTION_MANAGER, AUDITOR or OBSERVER can be assigned at event scope' using errcode = '22023';
+  end if;
+  if target_expires_at is not null and target_expires_at <= now() then
+    raise exception 'Assignment expiry must be in the future' using errcode = '22023';
+  end if;
+
+  select organization_id into target_org
+  from public.voting_events
+  where id = target_event
+  for update;
+
+  if target_org is null then
+    raise exception 'Voting event not found' using errcode = 'P0002';
+  end if;
+  if not private.has_org_role(target_org, array['OWNER','ADMIN']::public.organization_member_role[]) then
+    raise exception 'Only an active organization OWNER or ADMIN can assign scoped roles' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1 from public.organization_memberships m
+    where m.organization_id = target_org
+      and m.user_id = target_user
+      and m.status = 'ACTIVE'
+  ) then
+    raise exception 'Scoped-role recipient must be an active organization member' using errcode = '22023';
+  end if;
+
+  update public.process_role_assignments
+  set status = 'REVOKED', updated_at = now()
+  where event_id = target_event and user_id = target_user and status = 'ACTIVE';
+
+  insert into public.event_role_assignments (
+    organization_id, event_id, user_id, role, status, expires_at, assigned_by
+  )
+  values (target_org, target_event, target_user, target_role, 'ACTIVE', target_expires_at, caller_id)
+  on conflict (event_id, user_id) do update
+  set role = excluded.role,
+      status = 'ACTIVE',
+      expires_at = excluded.expires_at,
+      assigned_by = excluded.assigned_by,
+      updated_at = now()
+  returning id into assignment_id;
+
+  insert into public.audit_events (
+    organization_id, actor_user_id, action, resource_type, resource_id, event_data
+  )
+  values (
+    target_org, caller_id, 'EVENT_ROLE_ASSIGNED',
+    'voting_event', target_event::text,
+    jsonb_build_object('user_id', target_user, 'role', target_role, 'expires_at', target_expires_at)
+  );
+
+  return assignment_id;
+end;
+$function$;
+
+create or replace function public.assign_process_role(
+  target_process uuid,
+  target_user uuid,
+  target_role public.organization_member_role,
+  target_expires_at timestamptz default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  caller_id uuid := private.current_app_user_id();
+  target_org uuid;
+  target_event uuid;
+  event_role public.organization_member_role;
+  assignment_id uuid;
+begin
+  if caller_id is null then
+    raise exception 'Authenticated application identity is required' using errcode = '28000';
+  end if;
+  if target_role is null or target_role not in ('ELECTION_MANAGER', 'AUDITOR', 'OBSERVER') then
+    raise exception 'Only ELECTION_MANAGER, AUDITOR or OBSERVER can be assigned at process scope' using errcode = '22023';
+  end if;
+  if target_expires_at is not null and target_expires_at <= now() then
+    raise exception 'Assignment expiry must be in the future' using errcode = '22023';
+  end if;
+
+  select e.organization_id, e.id
+  into target_org, target_event
+  from public.voting_processes p
+  join public.voting_events e on e.id = p.event_id
+  where p.id = target_process
+  for update of p;
+
+  if target_org is null then
+    raise exception 'Voting process not found' using errcode = 'P0002';
+  end if;
+  if not private.has_org_role(target_org, array['OWNER','ADMIN']::public.organization_member_role[]) then
+    raise exception 'Only an active organization OWNER or ADMIN can assign scoped roles' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1 from public.organization_memberships m
+    where m.organization_id = target_org
+      and m.user_id = target_user
+      and m.status = 'ACTIVE'
+  ) then
+    raise exception 'Scoped-role recipient must be an active organization member' using errcode = '22023';
+  end if;
+
+  select a.role into event_role
+  from public.event_role_assignments a
+  where a.event_id = target_event
+    and a.user_id = target_user
+    and a.organization_id = target_org
+    and a.status = 'ACTIVE'
+    and (a.expires_at is null or a.expires_at > now());
+
+  if event_role is null then
+    raise exception 'A valid event-level role assignment is required before process-level narrowing' using errcode = '22023';
+  end if;
+
+  insert into public.process_role_assignments (
+    organization_id, event_id, process_id, user_id, role, status, expires_at, assigned_by
+  )
+  values (
+    target_org, target_event, target_process, target_user, target_role, 'ACTIVE', target_expires_at, caller_id
+  )
+  on conflict (process_id, user_id) do update
+  set role = excluded.role,
+      status = 'ACTIVE',
+      expires_at = excluded.expires_at,
+      assigned_by = excluded.assigned_by,
+      updated_at = now()
+  returning id into assignment_id;
+
+  insert into public.audit_events (
+    organization_id, actor_user_id, action, resource_type, resource_id, event_data
+  )
+  values (
+    target_org, caller_id, 'PROCESS_ROLE_ASSIGNED',
+    'voting_process', target_process::text,
+    jsonb_build_object('user_id', target_user, 'role', target_role, 'expires_at', target_expires_at)
+  );
+
+  return assignment_id;
+end;
+$function$;
+
+create or replace function public.revoke_event_role(target_event uuid, target_user uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  caller_id uuid := private.current_app_user_id();
+  target_org uuid;
+begin
+  select organization_id into target_org
+  from public.voting_events
+  where id = target_event
+  for update;
+
+  if target_org is null then
+    raise exception 'Voting event not found' using errcode = 'P0002';
+  end if;
+  if caller_id is null or not private.has_org_role(target_org, array['OWNER','ADMIN']::public.organization_member_role[]) then
+    raise exception 'Only an active organization OWNER or ADMIN can revoke scoped roles' using errcode = '42501';
+  end if;
+
+  update public.event_role_assignments
+  set status = 'REVOKED', updated_at = now()
+  where event_id = target_event and user_id = target_user and status = 'ACTIVE';
+
+  update public.process_role_assignments
+  set status = 'REVOKED', updated_at = now()
+  where event_id = target_event and user_id = target_user and status = 'ACTIVE';
+
+  insert into public.audit_events (
+    organization_id, actor_user_id, action, resource_type, resource_id, event_data
+  )
+  values (
+    target_org, caller_id, 'EVENT_ROLE_REVOKED',
+    'voting_event', target_event::text,
+    jsonb_build_object('user_id', target_user)
+  );
+
+  return true;
+end;
+$function$;
+
+create or replace function public.revoke_process_role(target_process uuid, target_user uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  caller_id uuid := private.current_app_user_id();
+  target_org uuid;
+begin
+  select e.organization_id into target_org
+  from public.voting_processes p
+  join public.voting_events e on e.id = p.event_id
+  where p.id = target_process
+  for update of p;
+
+  if target_org is null then
+    raise exception 'Voting process not found' using errcode = 'P0002';
+  end if;
+  if caller_id is null or not private.has_org_role(target_org, array['OWNER','ADMIN']::public.organization_member_role[]) then
+    raise exception 'Only an active organization OWNER or ADMIN can revoke scoped roles' using errcode = '42501';
+  end if;
+
+  update public.process_role_assignments
+  set status = 'REVOKED', updated_at = now()
+  where process_id = target_process and user_id = target_user and status = 'ACTIVE';
+
+  insert into public.audit_events (
+    organization_id, actor_user_id, action, resource_type, resource_id, event_data
+  )
+  values (
+    target_org, caller_id, 'PROCESS_ROLE_REVOKED',
+    'voting_process', target_process::text,
+    jsonb_build_object('user_id', target_user)
+  );
+
+  return true;
+end;
+$function$;
+
+revoke all on function public.assign_event_role(uuid, uuid, public.organization_member_role, timestamptz) from public, anon;
+revoke all on function public.assign_process_role(uuid, uuid, public.organization_member_role, timestamptz) from public, anon;
+revoke all on function public.revoke_event_role(uuid, uuid) from public, anon;
+revoke all on function public.revoke_process_role(uuid, uuid) from public, anon;
+grant execute on function public.assign_event_role(uuid, uuid, public.organization_member_role, timestamptz) to authenticated;
+grant execute on function public.assign_process_role(uuid, uuid, public.organization_member_role, timestamptz) to authenticated;
+grant execute on function public.revoke_event_role(uuid, uuid) to authenticated;
+grant execute on function public.revoke_process_role(uuid, uuid) to authenticated;
+
+-- Replace organization-wide scoped-role policies with explicit scoped grants.
+drop policy if exists "authorized managers can create voting events" on public.voting_events;
+create policy "organization admins can create voting events"
+on public.voting_events for insert to authenticated
+with check (
+  private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  and created_by = (select private.current_app_user_id())
+);
+
+drop policy if exists "authorized managers can update draft voting events" on public.voting_events;
+create policy "event managers can update draft voting events"
+on public.voting_events for update to authenticated
+using (
+  status = 'DRAFT'
+  and (
+    private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+    or private.has_event_permission(id, 'event.update')
+  )
+)
+with check (
+  status = 'DRAFT'
+  and (
+    private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+    or private.has_event_permission(id, 'event.update')
+  )
+);
+
+drop policy if exists "members can read voting events" on public.voting_events;
+create policy "scoped members can read voting events"
+on public.voting_events for select to authenticated
+using (
+  private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  or private.has_event_permission(id, 'event.read')
+);
+
+drop policy if exists "authorized managers can create voting processes" on public.voting_processes;
+create policy "event managers can create voting processes"
+on public.voting_processes for insert to authenticated
+with check (
+  exists (
+    select 1 from public.voting_events e
+    where e.id = event_id
+      and (
+        private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_event_permission(e.id, 'process.create')
+      )
+  )
+  and created_by = (select private.current_app_user_id())
+);
+
+drop policy if exists "authorized managers can update draft voting processes" on public.voting_processes;
+create policy "scoped managers can update draft voting processes"
+on public.voting_processes for update to authenticated
+using (
+  status = 'DRAFT'
+  and exists (
+    select 1 from public.voting_events e
+    where e.id = event_id
+      and (
+        private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(id, 'process.update')
+      )
+  )
+)
+with check (
+  status = 'DRAFT'
+  and exists (
+    select 1 from public.voting_events e
+    where e.id = event_id
+      and (
+        private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(id, 'process.update')
+      )
+  )
+);
+
+drop policy if exists "members can read voting processes" on public.voting_processes;
+create policy "scoped members can read voting processes"
+on public.voting_processes for select to authenticated
+using (
+  exists (
+    select 1 from public.voting_events e
+    where e.id = event_id
+      and (
+        private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(id, 'process.read')
+      )
+  )
+);
+
+drop policy if exists "authorized managers can create contests" on public.contests;
+create policy "scoped managers can create contests"
+on public.contests for insert to authenticated
+with check (
+  exists (
+    select 1 from public.voting_processes p
+    join public.voting_events e on e.id = p.event_id
+    where p.id = process_id
+      and p.status = 'DRAFT'
+      and (
+        private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'contest.manage')
+      )
+  )
+);
+
+drop policy if exists "authorized managers can update contests" on public.contests;
+create policy "scoped managers can update contests"
+on public.contests for update to authenticated
+using (
+  exists (
+    select 1 from public.voting_processes p
+    join public.voting_events e on e.id = p.event_id
+    where p.id = process_id
+      and p.status = 'DRAFT'
+      and (
+        private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'contest.manage')
+      )
+  )
+)
+with check (
+  exists (
+    select 1 from public.voting_processes p
+    join public.voting_events e on e.id = p.event_id
+    where p.id = process_id
+      and p.status = 'DRAFT'
+      and (
+        private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'contest.manage')
+      )
+  )
+);
+
+drop policy if exists "members can read contests" on public.contests;
+create policy "scoped members can read contests"
+on public.contests for select to authenticated
+using (
+  exists (
+    select 1 from public.voting_processes p
+    join public.voting_events e on e.id = p.event_id
+    where p.id = process_id
+      and (
+        private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'contest.read')
+      )
+  )
+);
+
+drop policy if exists "authorized managers can create ballot items" on public.ballot_items;
+create policy "scoped managers can create ballot items"
+on public.ballot_items for insert to authenticated
+with check (
+  exists (
+    select 1 from public.contests c
+    join public.voting_processes p on p.id = c.process_id
+    join public.voting_events e on e.id = p.event_id
+    where c.id = contest_id
+      and p.status = 'DRAFT'
+      and (
+        private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'ballot_structure.manage')
+      )
+  )
+);
+
+drop policy if exists "authorized managers can update ballot items" on public.ballot_items;
+create policy "scoped managers can update ballot items"
+on public.ballot_items for update to authenticated
+using (
+  exists (
+    select 1 from public.contests c
+    join public.voting_processes p on p.id = c.process_id
+    join public.voting_events e on e.id = p.event_id
+    where c.id = contest_id
+      and p.status = 'DRAFT'
+      and (
+        private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'ballot_structure.manage')
+      )
+  )
+)
+with check (
+  exists (
+    select 1 from public.contests c
+    join public.voting_processes p on p.id = c.process_id
+    join public.voting_events e on e.id = p.event_id
+    where c.id = contest_id
+      and p.status = 'DRAFT'
+      and (
+        private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'ballot_structure.manage')
+      )
+  )
+);
+
+drop policy if exists "members can read ballot items" on public.ballot_items;
+create policy "managers and auditors can read ballot items"
+on public.ballot_items for select to authenticated
+using (
+  exists (
+    select 1 from public.contests c
+    join public.voting_processes p on p.id = c.process_id
+    join public.voting_events e on e.id = p.event_id
+    where c.id = contest_id
+      and (
+        private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(p.id, 'ballot_structure.read')
+      )
+  )
+);
+
+-- Voter register rows contain identifying data. Until the separate purpose-
+-- specific PII grant workflow is implemented, only OWNER/ADMIN may read or write.
+drop policy if exists "authorized managers and auditors can read voter registers" on public.voter_register_entries;
+create policy "organization admins can read voter registers"
+on public.voter_register_entries for select to authenticated
+using (
+  exists (
+    select 1 from public.voting_processes p
+    join public.voting_events e on e.id = p.event_id
+    where p.id = process_id
+      and private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  )
+);
+
+drop policy if exists "authorized managers can add voter register entries" on public.voter_register_entries;
+create policy "organization admins can add voter register entries"
+on public.voter_register_entries for insert to authenticated
+with check (
+  exists (
+    select 1 from public.voting_processes p
+    join public.voting_events e on e.id = p.event_id
+    where p.id = process_id
+      and p.status = 'DRAFT'
+      and private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  )
+  and created_by = (select private.current_app_user_id())
+);
+
+drop policy if exists "authorized managers can update voter register entries" on public.voter_register_entries;
+create policy "organization admins can update voter register entries"
+on public.voter_register_entries for update to authenticated
+using (
+  exists (
+    select 1 from public.voting_processes p
+    join public.voting_events e on e.id = p.event_id
+    where p.id = process_id
+      and p.status = 'DRAFT'
+      and private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  )
+)
+with check (
+  exists (
+    select 1 from public.voting_processes p
+    join public.voting_events e on e.id = p.event_id
+    where p.id = process_id
+      and p.status = 'DRAFT'
+      and private.has_org_role(e.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  )
+);
+
+drop policy if exists "auditors can read audit events" on public.audit_events;
+create policy "organization admins and scoped auditors can read audit events"
+on public.audit_events for select to authenticated
+using (
+  private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  or (
+    resource_type = 'voting_process'
+    and private.has_process_permission(
+      case when resource_id ~ '^[0-9a-fA-F-]{36}$' then resource_id::uuid else null end,
+      'audit.read'
+    )
+  )
+  or (
+    resource_type = 'voting_event'
+    and private.has_event_permission(
+      case when resource_id ~ '^[0-9a-fA-F-]{36}$' then resource_id::uuid else null end,
+      'audit.read'
+    )
+  )
+);
+
 alter table public.process_lifecycle_events enable row level security;
 alter table public.process_workflow_requests enable row level security;
 alter table public.process_workflow_approvals enable row level security;
@@ -189,19 +912,15 @@ to authenticated;
 create policy "governance roles can read process lifecycle events"
 on public.process_lifecycle_events for select to authenticated
 using (
-  private.has_org_role(
-    organization_id,
-    array['OWNER','ADMIN','AUDITOR']::public.organization_member_role[]
-  )
+  private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  or private.has_process_permission(process_id, 'audit.read')
 );
 
 create policy "governance roles can read process workflow requests"
 on public.process_workflow_requests for select to authenticated
 using (
-  private.has_org_role(
-    organization_id,
-    array['OWNER','ADMIN','AUDITOR']::public.organization_member_role[]
-  )
+  private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+  or private.has_process_permission(process_id, 'audit.read')
 );
 
 create policy "governance roles can read process workflow approvals"
@@ -211,9 +930,9 @@ using (
     select 1
     from public.process_workflow_requests r
     where r.id = request_id
-      and private.has_org_role(
-        r.organization_id,
-        array['OWNER','ADMIN','AUDITOR']::public.organization_member_role[]
+      and (
+        private.has_org_role(r.organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+        or private.has_process_permission(r.process_id, 'audit.read')
       )
   )
 );
@@ -292,9 +1011,9 @@ begin
     raise exception 'Voting process not found' using errcode = 'P0002';
   end if;
 
-  if not private.has_org_role(
-    organization_id,
-    array['OWNER','ADMIN','ELECTION_MANAGER']::public.organization_member_role[]
+  if not (
+    private.has_org_role(organization_id, array['OWNER','ADMIN']::public.organization_member_role[])
+    or private.has_process_permission(target_process, 'process.submit')
   ) then
     raise exception 'Insufficient permission to submit this process' using errcode = '42501';
   end if;
