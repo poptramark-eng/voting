@@ -314,6 +314,203 @@ export type Database = {
           },
         ]
       }
+      payment_transactions: {
+        Row: {
+          id: string
+          organization_id: string
+          initiated_by: string
+          provider: string
+          provider_reference: string
+          idempotency_key: string
+          provider_transaction_id: string | null
+          price_code: string
+          amount_minor: number
+          currency: string
+          status: Database["public"]["Enums"]["payment_transaction_status"]
+          checkout_url: string | null
+          created_at: string
+          updated_at: string
+          verified_at: string | null
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          initiated_by: string
+          provider?: string
+          provider_reference: string
+          idempotency_key: string
+          provider_transaction_id?: string | null
+          price_code: string
+          amount_minor: number
+          currency: string
+          status?: Database["public"]["Enums"]["payment_transaction_status"]
+          checkout_url?: string | null
+          created_at?: string
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          initiated_by?: string
+          provider?: string
+          provider_reference?: string
+          idempotency_key?: string
+          provider_transaction_id?: string | null
+          price_code?: string
+          amount_minor?: number
+          currency?: string
+          status?: Database["public"]["Enums"]["payment_transaction_status"]
+          checkout_url?: string | null
+          created_at?: string
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
+      payment_webhook_events: {
+        Row: {
+          event_key: string
+          provider: string
+          ev      voting_processes: {
+        Row: {
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          ballot_format: Database["public"]["Enums"]["ballot_format"]
+          closes_at: string | null
+          created_at: string
+          created_by: string
+          eligibility_mode: string
+          event_id: string
+          id: string
+          opens_at: string | null
+          results_disclosure: Json
+          status: Database["public"]["Enums"]["process_status"]
+          title: string
+          updated_at: string
+          vote_change_policy: Json
+        }
+        Insert: {
+          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
+          ballot_format: Database["public"]["Enums"]["ballot_format"]
+          closes_at?: string | null
+          created_at?: string
+          created_by: string
+          eligibility_mode: string
+          event_id: string
+          id?: string
+          opens_at?: string | null
+          results_disclosure?: Json
+          status?: Database["public"]["Enums"]["process_status"]
+          title: string
+          updated_at?: string
+          vote_change_policy?: Json
+        }
+        Update: {
+          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
+          ballot_format?: Database["public"]["Enums"]["ballot_format"]
+          closes_at?: string | null
+          created_at?: string
+          created_by?: string
+          eligibility_mode?: string
+          event_id?: string
+          id?: string
+          opens_at?: string | null
+          results_disclosure?: Json
+          status?: Database["public"]["Enums"]["process_status"]
+          title?: string
+          updated_at?: string
+          vote_change_policy?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voting_processes_created_by_app_users_fk"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voting_processes_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "voting_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+          id: string
+          request_id: string
+          approver_user_id: string
+          decision: string
+          comment: string | null
+          decided_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          approver_user_id: string
+          decision: string
+          comment?: string | null
+          decided_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          approver_user_id?: string
+          decision?: string
+          comment?: string | null
+          decided_at?: string
+        }
+        Relationships: []
+      }
+      process_workflow_requests: {
+        Row: {
+          id: string
+          organization_id: string
+          process_id: string
+          requested_by: string
+          action: string
+          status: string
+          reason: string
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          required_approvals: number
+          process_updated_at: string
+          request_data: Json
+          requested_at: string
+          resolved_at: string | null
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          process_id: string
+          requested_by: string
+          action: string
+          status?: string
+          reason: string
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          required_approvals: number
+          process_updated_at: string
+          request_data?: Json
+          requested_at?: string
+          resolved_at?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          process_id?: string
+          requested_by?: string
+          action?: string
+          status?: string
+          reason?: string
+          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
+          required_approvals?: number
+          process_updated_at?: string
+          request_data?: Json
+          requested_at?: string
+          resolved_at?: string | null
+        }
+        Relationships: []
+      }
       voting_events: {
         Row: {
           assurance_tier: Database["public"]["Enums"]["assurance_tier"]
@@ -440,6 +637,17 @@ export type Database = {
         Args: { target_request: string; decision: string; comment?: string | null }
         Returns: string
       }
+      complete_paystack_payment: {
+        Args: {
+          target_reference: string
+          target_amount_minor: number
+          target_currency: string
+          target_provider_transaction_id: string
+          target_event_key: string
+          target_event_type: string
+        }
+        Returns: boolean
+      }
       create_organization: {
         Args: { org_name: string; org_slug: string }
         Returns: string
@@ -467,6 +675,7 @@ export type Database = {
       }
     }
     Enums: {
+      payment_transaction_status: "INITIALIZING" | "PENDING" | "SUCCEEDED" | "FAILED" | "ABANDONED" | "REFUNDED"
       assurance_tier: "STANDARD" | "ENHANCED" | "HIGH" | "CRITICAL"
       ballot_format:
         | "SINGLE_CHOICE"
@@ -626,6 +835,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      payment_transaction_status: ["INITIALIZING", "PENDING", "SUCCEEDED", "FAILED", "ABANDONED", "REFUNDED"],
       assurance_tier: ["STANDARD", "ENHANCED", "HIGH", "CRITICAL"],
       ballot_format: [
         "SINGLE_CHOICE",
