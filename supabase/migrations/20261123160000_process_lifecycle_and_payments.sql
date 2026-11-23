@@ -2037,4 +2037,4 @@ comment on table public.process_workflow_requests is
 comment on table public.payment_transactions is
   'Organization platform-billing ledger. Payments are not evidence of voter eligibility or ballot submission.';
 comment on table public.payment_webhook_events is
-  'Minimal idempotency ledger for verified Paystack webhook deliveries; raw webhook bodies are not stored.';
+  'Durable minimal Paystack webhook inbox and idempotency ledger with bounded retry state; raw webhook bodies are not stored.';
