@@ -680,6 +680,10 @@ export type Database = {
         }
         Returns: string
       }
+      claim_paystack_webhook_event: {
+        Args: { target_event_key: string }
+        Returns: Json
+      }
       close_expired_process: {
         Args: { target_process: string }
         Returns: string
@@ -702,6 +706,10 @@ export type Database = {
       emergency_suspend_process: {
         Args: { target_process: string; reason: string; evidence?: Json }
         Returns: string
+      }
+      fail_paystack_webhook_event: {
+        Args: { target_event_key: string; error_message: string }
+        Returns: boolean
       }
       open_scheduled_process: {
         Args: { target_process: string }
