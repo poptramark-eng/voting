@@ -49,3 +49,15 @@ test("process assignment UI only offers event-assigned active members and suppor
   assert.match(processUi, /method: "DELETE"/);
   assert.match(processUi, /cannot grant permissions the member does not already hold/);
 });
+
+const permissionMigration = read("../supabase/migrations/20261123233325_expose_current_scoped_permission_checks.sql");
+
+test("workspace permission flags use current database scope checks rather than guessing from one role", () => {
+  assert.match(eventPage, /has_current_event_permission/);
+  assert.match(processPage, /has_current_process_permission/);
+  assert.doesNotMatch(processPage, /effectiveScopedRole/);
+  assert.match(permissionMigration, /security invoker/);
+  assert.match(permissionMigration, /private\.has_event_permission/);
+  assert.match(permissionMigration, /private\.has_process_permission/);
+  assert.match(permissionMigration, /revoke all on function public\.has_current_process_permission\(uuid, text\) from public, anon/);
+});
