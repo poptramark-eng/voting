@@ -6,6 +6,7 @@ import { ProcessConfiguration } from "./process-configuration";
 import { ProcessLifecycleControls } from "./process-lifecycle-controls";
 import { VoterRegisterImport } from "./voter-register-import";
 import { VoterRegisterWorkspace } from "./voter-register-workspace";
+import { VoterRegisterFinalization } from "./voter-register-finalization";
 import { ProcessRoleAssignments } from "./process-role-assignments";
 
 type PageProps = { params: Promise<{ processId: string }> };
@@ -244,6 +245,13 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
           assuranceTier={process.assurance_tier}
           canManage={canManageRegister && process.status === "DRAFT"}
           canRequestPii={canRequestPii}
+          canGovern={canGovern}
+        />
+        <VoterRegisterFinalization
+          processId={processId}
+          currentUserId={appUser.id}
+          processStatus={process.status}
+          canManage={canManageRegister && process.status === "DRAFT"}
           canGovern={canGovern}
         />
       </section>
