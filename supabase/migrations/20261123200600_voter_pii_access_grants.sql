@@ -292,7 +292,12 @@ as $function$
       or (r.scope_type = 'PROCESS' and r.event_id = e.id and r.process_id = p.id)
     )
     and private.assurance_tier_rank(r.assurance_tier)
-        >= private.assurance_tier_rank(p.assurance_tier)
+        >= private.assurance_tier_rank(
+          case when r.scope_type = 'EVENT'
+            then private.resolve_voter_pii_assurance(e.id, null)
+            else p.assurance_tier
+          end
+        )
     and private.has_process_permission(target_process, 'voter_pii.read')
   order by case when r.scope_type = 'PROCESS' then 0 else 1 end,
            r.granted_at desc
@@ -350,6 +355,7 @@ begin
      or target_categories is null
      or cardinality(target_categories) < 1
      or cardinality(target_categories) > 4
+     or array_position(target_categories, null) is not null
      or not (target_categories <@ array[
        'VOTER_NAME', 'CONTACT_EMAIL', 'CONTACT_PHONE', 'EXTERNAL_REFERENCE'
      ]::text[])
@@ -492,7 +498,8 @@ begin
   if caller_id is null then
     raise exception 'Authenticated application identity is required' using errcode = '28000';
   end if;
-  if target_decision not in ('APPROVE', 'REJECT')
+  if target_decision is null
+     or target_decision not in ('APPROVE', 'REJECT')
      or (target_comment is not null and length(target_comment) > 2000) then
     raise exception 'Invalid approval decision or comment' using errcode = '22023';
   end if;
@@ -750,9 +757,10 @@ begin
   if caller_id is null then
     raise exception 'Authenticated application identity is required' using errcode = '28000';
   end if;
-  if target_access_mode not in ('VIEW', 'EXPORT')
-     or target_limit < 1 or target_limit > 5000
-     or target_offset < 0 or target_offset > 1000000 then
+  if target_access_mode is null
+     or target_access_mode not in ('VIEW', 'EXPORT')
+     or target_limit is null or target_limit < 1 or target_limit > 5000
+     or target_offset is null or target_offset < 0 or target_offset > 1000000 then
     raise exception 'Invalid voter register access mode or pagination' using errcode = '22023';
   end if;
 
