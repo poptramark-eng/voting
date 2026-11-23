@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { parseVoterRegisterExportPagination, parseVoterRegisterPagination, splitLookaheadRows, toCsv } from "@/lib/voter-register-export";
 
 type RouteContext = { params: Promise<{ processId: string }> };
 
@@ -12,14 +13,6 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function parsePagination(url: URL) {
-  const limit = Number(url.searchParams.get("limit") ?? "500");
-  const offset = Number(url.searchParams.get("offset") ?? "0");
-  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 5000 ||
-      !Number.isSafeInteger(offset) || offset < 0 || offset > 1_000_000) return null;
-  return { limit, offset };
-}
-
 function errorStatus(code?: string): number {
   if (code === "42501") return 403;
   if (code === "P0002") return 404;
@@ -27,29 +20,12 @@ function errorStatus(code?: string): number {
   return 500;
 }
 
-function csvCell(value: unknown): string {
-  let text = value === null || value === undefined ? "" :
-    typeof value === "object" ? JSON.stringify(value) : String(value);
-  if (/^[\s]*[=+@-]/.test(text)) text = "'" + text;
-  return '"' + text.replace(/"/g, '""') + '"';
-}
-
-function toCsv(rows: unknown[]): string {
-  const records = rows.filter(isRecord);
-  if (records.length === 0) return "";
-  const columns = [...new Set(records.flatMap((row) => Object.keys(row)))];
-  return [
-    columns.map(csvCell).join(","),
-    ...records.map((row) => columns.map((column) => csvCell(row[column])).join(",")),
-  ].join("\r\n");
-}
-
 async function readRows(processId: string, mode: "VIEW" | "EXPORT", limit: number, offset: number) {
   const supabase = await createSupabaseServerClient();
   return supabase.rpc("read_voter_register_entries", {
     target_process: processId,
     target_access_mode: mode,
-    target_limit: limit,
+    target_limit: limit + 1,
     target_offset: offset,
   });
 }
@@ -65,9 +41,10 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Invalid process identifier." }, { status: 400 });
   }
 
-  const pagination = parsePagination(new URL(request.url));
+  const url = new URL(request.url);
+  const pagination = parseVoterRegisterPagination(url.searchParams.get("limit"), url.searchParams.get("offset"));
   if (!pagination) {
-    return NextResponse.json({ error: "Invalid pagination. Limit must be 1–5000 and offset 0–1000000." }, { status: 400 });
+    return NextResponse.json({ error: "Invalid pagination. Limit must be 1–4999 and offset 0–1000000." }, { status: 400 });
   }
 
   try {
@@ -76,13 +53,9 @@ export async function GET(request: Request, context: RouteContext) {
       console.error("Voter register read failed:", { code: error.code, message: error.message });
       return NextResponse.json({ error: error.message }, { status: errorStatus(error.code) });
     }
+    const { rows, hasMore } = splitLookaheadRows(data, pagination.limit);
     return NextResponse.json(
-      {
-        rows: Array.isArray(data) ? data : [],
-        limit: pagination.limit,
-        offset: pagination.offset,
-        hasMore: Array.isArray(data) && data.length === pagination.limit,
-      },
+      { rows, limit: pagination.limit, offset: pagination.offset, hasMore },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
@@ -113,23 +86,19 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "A JSON request object is required." }, { status: 400 });
   }
 
-  const limit = body.limit ?? 5000;
-  const offset = body.offset ?? 0;
-  if (
-    typeof limit !== "number" || !Number.isSafeInteger(limit) || limit < 1 || limit > 5000 ||
-    typeof offset !== "number" || !Number.isSafeInteger(offset) || offset < 0 || offset > 1_000_000
-  ) {
-    return NextResponse.json({ error: "Invalid export pagination." }, { status: 400 });
+  const pagination = parseVoterRegisterExportPagination(body.limit, body.offset);
+  if (!pagination) {
+    return NextResponse.json({ error: "Invalid export pagination. Limit must be 1–4999 and offset 0–1000000." }, { status: 400 });
   }
 
   try {
-    const { data, error } = await readRows(processId, "EXPORT", limit, offset);
+    const { data, error } = await readRows(processId, "EXPORT", pagination.limit, pagination.offset);
     if (error) {
       console.error("Voter register export failed:", { code: error.code, message: error.message });
       return NextResponse.json({ error: error.message }, { status: errorStatus(error.code) });
     }
 
-    const rows = Array.isArray(data) ? data.filter(isRecord) : [];
+    const { rows, hasMore } = splitLookaheadRows(data, pagination.limit);
     const csv = toCsv(rows);
     return new NextResponse(csv, {
       status: 200,
@@ -138,7 +107,7 @@ export async function POST(request: Request, context: RouteContext) {
         "Content-Disposition": `attachment; filename="voter-register-${processId}.csv"`,
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
-        "X-Has-More": String(rows.length === limit),
+        "X-Has-More": String(hasMore),
       },
     });
   } catch (error) {
