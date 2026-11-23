@@ -130,10 +130,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               return (
                 <article className="membership" key={membership.id}>
                   <div>
-                    <h3>{organization.name}</h3>
+                    <h3><Link href={`/dashboard/organizations/${organization.id}`}>{organization.name}</Link></h3>
                     <p className="muted">/{organization.slug}</p>
                   </div>
-                  <p className="muted">{membership.role.replaceAll("_", " ")}</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <p className="muted">{membership.role.replaceAll("_", " ")}</p>
+                    <Link className="button secondary" href={`/dashboard/organizations/${organization.id}`}>Open workspace</Link>
+                  </div>
                 </article>
               );
             })}
