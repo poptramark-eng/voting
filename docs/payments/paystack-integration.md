@@ -19,6 +19,7 @@ Set these values in local environment and Vercel server-side environment variabl
 | `PAYSTACK_WEBHOOK_SECRET_PREVIOUS` | Optional previous signing secret during rotation overlap; server only |
 | `PAYSTACK_PRICE_CATALOG_JSON` | Server-controlled price catalog |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only key for narrowly scoped payment-ledger writes |
+| `CRON_SECRET` | Bearer token protecting the internal webhook retry endpoint |
 | `APP_BASE_URL` | Public application base URL used for Paystack callback |
 
 Never prefix these secrets with `NEXT_PUBLIC_`. Never commit actual values. Start with Paystack test keys and test webhook signing secret.
@@ -70,20 +71,28 @@ Configure Paystack to send webhooks to:
 The handler:
 1. Reads the raw request body.
 2. Verifies the timestamped `Paystack-Signature` HMAC-SHA512 header with the current or optional previous webhook signing secret, including a 300-second timestamp tolerance. Multiple `v1` signatures are checked to support secret rotation overlap. A legacy `X-Paystack-Signature` verification path is retained for integrations that have not yet enabled the signing secret.
-3. For `charge.success`, independently calls Paystack's transaction verification endpoint.
-4. Checks the verified reference, status, amount and currency against the server-created payment row.
-5. Calls a service-role-only database function that atomically marks the payment successful, records a minimal webhook idempotency event and appends an audit event.
+3. For `charge.success`, validates the minimal event fields and persists a durable inbox row containing only the reference, amount, currency and provider transaction ID. The raw webhook body is not stored.
+4. Returns `200 OK` immediately after the inbox write. Next.js `after()` starts background processing after the response.
+5. The background processor atomically claims the inbox row, independently calls Paystack's transaction verification endpoint, compares the verified reference/status/amount/currency with the signed event, and calls a service-role-only database function to settle the payment and append audit evidence.
+6. Transient failures are recorded with bounded retries. Stale PROCESSING rows can be reclaimed after ten minutes.
 
-The callback route `/dashboard/billing?reference=...` is informational only. A browser redirect never marks a payment as successful. The webhook and server-side verification are authoritative.
+The protected retry endpoint is:
 
-Raw webhook bodies are not stored. Payment records contain organization, initiator, amount, currency, price code and provider references, but not card data.
+`GET /api/internal/payments/process-webhooks`
+
+It requires `Authorization: Bearer <CRON_SECRET>`, processes eligible inbox rows in batches and is intended to be called by a reliable external scheduler. Configure a scheduler before production so failed or interrupted background work is retried; the endpoint can also be invoked manually by an authorized operator. The webhook inbox is durable even if a background task is interrupted.
+
+The callback route `/dashboard/billing?reference=...` is informational only. A browser redirect never marks a payment as successful. The verified server-side transaction and settlement RPC are authoritative.
+
+Raw webhook bodies are not stored. Payment records contain organization, initiator, amount, currency, price code and provider references, but not card data. The inbox stores only the minimal fields needed for verification and retry.
 
 ## Database
 
 Migration: `supabase/migrations/20261123160000_process_lifecycle_and_payments.sql`
 
 - `payment_transactions`: organization billing ledger; read access is limited to OWNER, ADMIN and BILLING_MANAGER.
-- `payment_webhook_events`: minimal event-key deduplication; no authenticated client access.
+- `payment_webhook_events`: durable minimal inbox, idempotency and bounded retry state; no authenticated client access.
+- `public.claim_paystack_webhook_event` and `public.fail_paystack_webhook_event`: service-role-only atomic claim/retry functions.
 - `public.complete_paystack_payment`: callable only by `service_role`; checks amount/currency and updates the ledger and audit evidence atomically.
 
 The service-role client is isolated in `src/lib/supabase/admin.ts` and used only by billing routes. It must never be imported into client components.
