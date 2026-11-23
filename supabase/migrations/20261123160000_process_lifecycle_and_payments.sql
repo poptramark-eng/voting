@@ -695,10 +695,8 @@ end;
 $function$;
 
 revoke all on function private.scoped_role_rank(public.organization_member_role) from public, anon, authenticated;
-revoke all on function private.has_event_role(uuid, public.organization_member_role[]) from public, anon;
-revoke all on function private.has_process_role(uuid, public.organization_member_role[]) from public, anon;
-grant execute on function private.has_event_role(uuid, public.organization_member_role[]) to authenticated;
-grant execute on function private.has_process_role(uuid, public.organization_member_role[]) to authenticated;
+revoke all on function private.has_event_role(uuid, public.organization_member_role[]) from public, anon, authenticated;
+revoke all on function private.has_process_role(uuid, public.organization_member_role[]) from public, anon, authenticated;
 
 revoke all on function public.assign_event_role(uuid, uuid, public.organization_member_role, timestamptz) from public, anon;
 revoke all on function public.assign_process_role(uuid, uuid, public.organization_member_role, timestamptz) from public, anon;
