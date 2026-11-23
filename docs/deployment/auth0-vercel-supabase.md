@@ -98,9 +98,9 @@ Do not install the Vercel-native Auth0 integration without a separate decision. 
 
 ## Paystack server environment
 
-The billing API requires server-side `PAYSTACK_SECRET_KEY`, `PAYSTACK_WEBHOOK_SECRET`, `PAYSTACK_PRICE_CATALOG_JSON` and `SUPABASE_SERVICE_ROLE_KEY`, in addition to `APP_BASE_URL`. Configure them only in local server environment and Vercel server-side environment variables; never use a `NEXT_PUBLIC_` prefix for secrets. Begin with Paystack test credentials. The price catalog is server-controlled; clients submit only a price code and an idempotency key.
+The billing API requires server-side `PAYSTACK_SECRET_KEY`, `PAYSTACK_WEBHOOK_SECRET`, optional `PAYSTACK_WEBHOOK_SECRET_PREVIOUS`, `PAYSTACK_PRICE_CATALOG_JSON`, `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET`, in addition to `APP_BASE_URL`. Configure them only in local server environment and Vercel server-side environment variables; never use a `NEXT_PUBLIC_` prefix for secrets. Begin with Paystack test credentials. The price catalog is server-controlled; clients submit only a price code and an idempotency key.
 
-Configure the Paystack webhook URL as `/api/webhooks/paystack`. Do not mark payments successful from the browser callback. Follow [Paystack integration](../payments/paystack-integration.md) for webhook signing, transaction verification and test steps.
+Configure the Paystack webhook URL as `/api/webhooks/paystack`. The endpoint durably stores a minimal inbox event and acknowledges quickly; background processing verifies the transaction. Configure a reliable external scheduler to call `GET /api/internal/payments/process-webhooks` with `Authorization: Bearer <CRON_SECRET>` so failed or interrupted inbox events are retried. Do not mark payments successful from the browser callback. Follow [Paystack integration](../payments/paystack-integration.md) for webhook signing, transaction verification and test steps.
 
 Do not deploy the lifecycle/payment migration until the mismatch between repository migration filenames and hosted Supabase migration history has been reconciled and the migration has been reviewed in staging.
 
