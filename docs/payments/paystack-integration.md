@@ -80,7 +80,7 @@ The protected retry endpoint is:
 
 `GET /api/internal/payments/process-webhooks`
 
-It requires `Authorization: Bearer <CRON_SECRET>`, processes eligible inbox rows in batches and is intended to be called by a reliable external scheduler. Configure a scheduler before production so failed or interrupted background work is retried; the endpoint can also be invoked manually by an authorized operator. The webhook inbox is durable even if a background task is interrupted.
+It requires `Authorization: Bearer <CRON_SECRET>` and processes eligible inbox rows in batches. The repository includes `.github/workflows/paystack-webhook-retry.yml`, which calls this endpoint every five minutes after it is merged to the default branch. Configure the GitHub Actions repository variable `APP_BASE_URL` and repository secret `CRON_SECRET` (the same value configured in Vercel). The workflow can also be run manually with `workflow_dispatch`. The webhook inbox is durable even if a background task is interrupted.
 
 The callback route `/dashboard/billing?reference=...` is informational only. A browser redirect never marks a payment as successful. The verified server-side transaction and settlement RPC are authoritative.
 
