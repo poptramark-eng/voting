@@ -12,6 +12,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function errorStatus(code?: string): number {
   if (code === "42501") return 403;
   if (code === "P0002") return 404;
+  if (code === "23505") return 409;
   if (code === "22023") return 400;
   return 500;
 }
