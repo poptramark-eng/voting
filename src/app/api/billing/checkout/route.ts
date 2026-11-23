@@ -138,6 +138,28 @@ export async function POST(request: Request) {
       .single();
 
     if (insertError || !payment) {
+      if (insertError?.code === "23505") {
+        const { data: racedPayment } = await admin
+          .from("payment_transactions")
+          .select("status, checkout_url, provider_reference")
+          .eq("organization_id", body.organizationId)
+          .eq("idempotency_key", idempotencyKey)
+          .maybeSingle();
+
+        if (racedPayment?.status === "PENDING" && racedPayment.checkout_url) {
+          return NextResponse.json({
+            authorizationUrl: racedPayment.checkout_url,
+            reference: racedPayment.provider_reference,
+            reused: true,
+          });
+        }
+
+        return NextResponse.json(
+          { error: "A checkout using this idempotency key is already being initialized. Retry shortly." },
+          { status: 409 }
+        );
+      }
+
       console.error("Payment intent creation failed:", insertError?.message);
       return NextResponse.json({ error: "Unable to create the payment request." }, { status: 500 });
     }
