@@ -25,7 +25,7 @@ export async function createSupabaseServerClient() {
     throw new Error("Supabase URL and publishable key must be configured.");
   }
 
-  return createClient(supabaseUrl, supabasePublishableKey, {
+  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     accessToken: async () => idToken,
     auth: {
       autoRefreshToken: false,
@@ -33,4 +33,14 @@ export async function createSupabaseServerClient() {
       detectSessionInUrl: false,
     },
   });
+
+  // First login provisions an internal UUID mapped to the immutable Auth0 sub.
+  // The database function derives identity fields from the verified JWT itself.
+  const { error } = await supabase.rpc("ensure_app_user");
+
+  if (error) {
+    throw new Error("Unable to provision the authenticated application identity.");
+  }
+
+  return supabase;
 }
