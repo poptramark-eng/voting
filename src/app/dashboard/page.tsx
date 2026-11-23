@@ -15,7 +15,36 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     redirect("/auth/login?returnTo=/dashboard");
   }
 
-  const supabase = await createSupabaseServerClient();
+  let supabase;
+  try {
+    supabase = await createSupabaseServerClient();
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "UNKNOWN_AUTH_ERROR";
+    if (code === "AUTH0_ID_TOKEN_ROLE_CLAIM_MISSING") {
+      return (
+        <main className="shell" style={{ paddingTop: 48, paddingBottom: 64 }}>
+          <section className="panel" style={{ maxWidth: 680, margin: "0 auto" }}>
+            <p className="eyebrow">Secure connection needs attention</p>
+            <h1 style={{ fontSize: 30, marginBottom: 12 }}>You are signed in, but your workspace is not ready.</h1>
+            <p className="muted">
+              Your Google sign-in through Auth0 succeeded, but the ID token is missing the
+              database-access role. We cannot safely load or create your organization yet.
+            </p>
+            <p className="muted">
+              The Auth0 Post-Login Action must add <code>role = authenticated</code> to the
+              ID token (not only the access token) and be enabled in the active Login flow.
+            </p>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 20 }}>
+              <a className="button" href="/auth/logout">Sign out and retry</a>
+              <Link className="button secondary" href="/">Back to home</Link>
+            </div>
+          </section>
+        </main>
+      );
+    }
+    console.error("Dashboard Supabase initialization failed:", code);
+    throw error;
+  }
 
   // The server client provisions the app_users row before returning.
   // maybeSingle gives us a controlled empty state if provisioning ever fails.
