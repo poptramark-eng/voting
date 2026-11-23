@@ -4,7 +4,7 @@ Status: implementation foundation committed on the feature branch; hosted migrat
 
 ## Scope
 
-This document defines the first implemented process-lifecycle workflow. A voting event is the organizational container; each voting process is independently scheduled and governed. The process assurance tier is stored on the process and cannot be lower than its parent event's assurance tier.
+This document defines the first implemented process-lifecycle workflow. A voting event is the organizational container; each voting process is independently scheduled and governed. The process assurance tier is stored on the process and cannot be lower than its parent event's assurance tier. Raising an event's assurance tier also raises any lower child-process tiers and invalidates pending approvals through the process version timestamp.
 
 The lifecycle implementation does not implement ballot acceptance, tallying, result certification, recounts, automatic opening/closure or public-election authorization. Those require their own domain models and assurance reviews.
 
@@ -37,6 +37,8 @@ Termination is irreversible. A replacement vote must be created as a new process
 - The requester cannot approve their own operation.
 - Every approval must come from a distinct active organization OWNER or ADMIN.
 - ELECTION_MANAGER may submit a process for approval but cannot approve it.
+- If process approval is rejected, the process returns to DRAFT so its configuration can be corrected and resubmitted.
+- If a pending process approval becomes stale or its opening schedule expires, the request is cancelled and the process returns to DRAFT.
 - Scoped roles do not grant OWNER/ADMIN approval authority.
 - Assurance tier is read from the process row; it is never accepted from the request payload.
 - Process assurance cannot be lower than the parent event assurance.
