@@ -470,6 +470,108 @@ export type Database = {
         }
         Relationships: []
       }
+      voter_pii_access_requests: {
+        Row: {
+          id: string
+          organization_id: string
+          event_id: string
+          process_id: string | null
+          scope_type: string
+          recipient_user_id: string
+          requested_by: string
+          permitted_categories: string[]
+          purpose: string
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          required_approvals: number
+          requested_expires_at: string
+          status: string
+          granted_at: string | null
+          expires_at: string | null
+          resolved_at: string | null
+          revoked_by: string | null
+          revoked_at: string | null
+          revocation_reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          event_id: string
+          process_id?: string | null
+          scope_type: string
+          recipient_user_id: string
+          requested_by: string
+          permitted_categories: string[]
+          purpose: string
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          required_approvals: number
+          requested_expires_at: string
+          status?: string
+          granted_at?: string | null
+          expires_at?: string | null
+          resolved_at?: string | null
+          revoked_by?: string | null
+          revoked_at?: string | null
+          revocation_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          event_id?: string
+          process_id?: string | null
+          scope_type?: string
+          recipient_user_id?: string
+          requested_by?: string
+          permitted_categories?: string[]
+          purpose?: string
+          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
+          required_approvals?: number
+          requested_expires_at?: string
+          status?: string
+          granted_at?: string | null
+          expires_at?: string | null
+          resolved_at?: string | null
+          revoked_by?: string | null
+          revoked_at?: string | null
+          revocation_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      voter_pii_access_approvals: {
+        Row: {
+          id: string
+          request_id: string
+          approver_user_id: string
+          decision: string
+          comment: string | null
+          request_snapshot: Json
+          decided_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          approver_user_id: string
+          decision: string
+          comment?: string | null
+          request_snapshot: Json
+          decided_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          approver_user_id?: string
+          decision?: string
+          comment?: string | null
+          request_snapshot?: Json
+          decided_at?: string
+        }
+        Relationships: []
+      }
       process_lifecycle_events: {
         Row: {
           id: string
@@ -703,6 +805,10 @@ export type Database = {
         Args: { org_name: string; org_slug: string }
         Returns: string
       }
+      decide_voter_pii_access_request: {
+        Args: { target_request: string; target_decision: string; target_comment?: string | null }
+        Returns: Json
+      }
       emergency_suspend_process: {
         Args: { target_process: string; reason: string; evidence?: Json }
         Returns: string
@@ -713,6 +819,22 @@ export type Database = {
       }
       open_scheduled_process: {
         Args: { target_process: string }
+        Returns: string
+      }
+      read_voter_register_entries: {
+        Args: { target_process: string; target_access_mode?: string; target_limit?: number; target_offset?: number }
+        Returns: Json
+      }
+      request_voter_pii_access: {
+        Args: {
+          target_scope: string
+          target_event: string
+          target_process: string | null
+          target_recipient: string
+          target_categories: string[]
+          target_purpose: string
+          target_expires_at: string
+        }
         Returns: string
       }
       request_process_resumption: {
@@ -727,6 +849,10 @@ export type Database = {
       request_process_termination: {
         Args: { target_process: string; reason: string; evidence?: Json }
         Returns: string
+      }
+      revoke_voter_pii_access: {
+        Args: { target_request: string; target_reason: string }
+        Returns: boolean
       }
       revoke_event_role: {
         Args: { target_event: string; target_user: string }
