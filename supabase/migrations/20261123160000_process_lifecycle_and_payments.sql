@@ -1027,12 +1027,17 @@ begin
     raise exception 'Authenticated application identity is required' using errcode = '28000';
   end if;
 
-  select p, e.organization_id
-  into process_row, organization_id
+  select p.*
+  into process_row
+  from public.voting_processes p
+  where p.id = target_process
+  for update;
+
+  select e.organization_id
+  into organization_id
   from public.voting_processes p
   join public.voting_events e on e.id = p.event_id
-  where p.id = target_process
-  for update of p;
+  where p.id = target_process;
 
   if not found then
     raise exception 'Voting process not found' using errcode = 'P0002';
@@ -1127,12 +1132,17 @@ begin
     raise exception 'A suspension reason of 10 to 2000 characters is required' using errcode = '22023';
   end if;
 
-  select p, e.organization_id
-  into process_row, organization_id
+  select p.*
+  into process_row
+  from public.voting_processes p
+  where p.id = target_process
+  for update;
+
+  select e.organization_id
+  into organization_id
   from public.voting_processes p
   join public.voting_events e on e.id = p.event_id
-  where p.id = target_process
-  for update of p;
+  where p.id = target_process;
 
   if not found then
     raise exception 'Voting process not found' using errcode = 'P0002';
@@ -1203,12 +1213,17 @@ begin
     raise exception 'A reason, documented review outcome and corrective-actions array are required' using errcode = '22023';
   end if;
 
-  select p, e.organization_id
-  into process_row, organization_id
+  select p.*
+  into process_row
+  from public.voting_processes p
+  where p.id = target_process
+  for update;
+
+  select e.organization_id
+  into organization_id
   from public.voting_processes p
   join public.voting_events e on e.id = p.event_id
-  where p.id = target_process
-  for update of p;
+  where p.id = target_process;
 
   if not found then
     raise exception 'Voting process not found' using errcode = 'P0002';
@@ -1285,12 +1300,17 @@ begin
     raise exception 'A termination reason of 10 to 2000 characters is required' using errcode = '22023';
   end if;
 
-  select p, e.organization_id
-  into process_row, organization_id
+  select p.*
+  into process_row
+  from public.voting_processes p
+  where p.id = target_process
+  for update;
+
+  select e.organization_id
+  into organization_id
   from public.voting_processes p
   join public.voting_events e on e.id = p.event_id
-  where p.id = target_process
-  for update of p;
+  where p.id = target_process;
 
   if not found then
     raise exception 'Voting process not found' using errcode = 'P0002';
@@ -1352,12 +1372,17 @@ begin
     raise exception 'Authenticated application identity is required' using errcode = '28000';
   end if;
 
-  select p, e.organization_id
-  into process_row, organization_id
+  select p.*
+  into process_row
+  from public.voting_processes p
+  where p.id = target_process
+  for update;
+
+  select e.organization_id
+  into organization_id
   from public.voting_processes p
   join public.voting_events e on e.id = p.event_id
-  where p.id = target_process
-  for update of p;
+  where p.id = target_process;
 
   if not found then
     raise exception 'Voting process not found' using errcode = 'P0002';
@@ -1428,12 +1453,17 @@ begin
     raise exception 'Authenticated application identity is required' using errcode = '28000';
   end if;
 
-  select p, e.organization_id
-  into process_row, organization_id
+  select p.*
+  into process_row
+  from public.voting_processes p
+  where p.id = target_process
+  for update;
+
+  select e.organization_id
+  into organization_id
   from public.voting_processes p
   join public.voting_events e on e.id = p.event_id
-  where p.id = target_process
-  for update of p;
+  where p.id = target_process;
 
   if not found then
     raise exception 'Voting process not found' using errcode = 'P0002';
