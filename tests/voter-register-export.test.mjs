@@ -107,7 +107,7 @@ test("route GET requests one look-ahead row and reports exact final-page state",
     routeContext,
   );
   const payload = await response.json();
-  assert.equal(response.status, 200);
+  assert.equal(response.status, 200, await response.clone().text());
   assert.deepEqual(call, [validProcessId, "VIEW", 3, 0]);
   assert.deepEqual(payload, {
     rows: [{ id: 1 }, { id: 2 }],
@@ -139,7 +139,7 @@ test("route POST exports only the requested rows and sets X-Has-More from look-a
     routeContext,
   );
   const csv = await response.text();
-  assert.equal(response.status, 200);
+  assert.equal(response.status, 200, await response.clone().text());
   assert.deepEqual(call, [validProcessId, "EXPORT", 2, 0]);
   assert.equal(csv, '"displayName"\r\n"\'=1+1"');
   assert.equal(response.headers.get("x-has-more"), "true");
