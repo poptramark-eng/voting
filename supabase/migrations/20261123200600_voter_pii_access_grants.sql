@@ -322,7 +322,7 @@ revoke all on function private.resolve_voter_pii_assurance(uuid, uuid) from publ
 revoke all on function private.required_voter_pii_approvals(public.assurance_tier) from public, anon, authenticated;
 revoke all on function private.max_voter_pii_grant_lifetime(public.assurance_tier) from public, anon, authenticated;
 revoke all on function private.active_voter_pii_grant(uuid) from public, anon, authenticated;
-revoke all on function private.has_active_voter_pii_grant(uuid) from public, anon;
+revoke all on function private.has_active_voter_pii_grant(uuid) from public, anon, authenticated;
 grant execute on function private.has_active_voter_pii_grant(uuid) to authenticated;
 
 create or replace function public.request_voter_pii_access(
