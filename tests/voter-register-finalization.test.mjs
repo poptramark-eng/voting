@@ -6,7 +6,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const schema = read("../supabase/migrations/20261123234858_voter_register_finalization_snapshots.sql");
 const rpcHardening = read("../supabase/migrations/20261123235032_harden_voter_register_finalization_rpc.sql");
 const configHardening = read("../supabase/migrations/20261123235249_harden_finalized_register_configuration.sql");
-const grantBinding = read("../supabase/migrations/20261124001500_bind_snapshot_to_pii_grant.sql");
+const grantBinding = read("../supabase/migrations/20261123235555_bind_snapshot_to_pii_grant.sql");
 const workspace = read("../src/app/dashboard/processes/[processId]/voter-register-finalization.tsx");
 const processPage = read("../src/app/dashboard/processes/[processId]/page.tsx");
 const finalizationRoute = read("../src/app/api/processes/[processId]/voter-register/finalization/route.ts");
