@@ -138,6 +138,12 @@ create table public.process_workflow_requests (
   resolved_at timestamptz
 );
 
+alter table public.process_lifecycle_events
+  add constraint process_lifecycle_events_workflow_request_fk
+  foreign key (workflow_request_id)
+  references public.process_workflow_requests(id)
+  on delete restrict;
+
 create index process_workflow_requests_org_status_idx
   on public.process_workflow_requests(organization_id, status, requested_at desc);
 create index process_workflow_requests_process_idx
@@ -634,7 +640,35 @@ begin
     raise exception 'Voting process not found' using errcode = 'P0002';
   end if;
 
-  if process_row.updated_at is distinct from request_row.process_updated_at then
+  if process_row.updated_at is distinct from request_row.process_updated_at
+     or (
+       request_row.action = 'APPROVE_PROCESS'
+       and (
+         process_row.opens_at is null
+         or process_row.closes_at is null
+         or process_row.opens_at <= now()
+         or process_row.closes_at <= process_row.opens_at
+       )
+     ) then
+    if request_row.action = 'APPROVE_PROCESS'
+       and process_row.status = 'PENDING_APPROVAL' then
+      update public.voting_processes
+      set status = 'DRAFT', updated_at = now()
+      where id = request_row.process_id;
+
+      insert into public.process_lifecycle_events (
+        organization_id, process_id, actor_user_id, action,
+        from_status, to_status, reason, workflow_request_id
+      )
+      values (
+        request_row.organization_id, request_row.process_id, caller_id,
+        'PROCESS_APPROVAL_REQUEST_CANCELLED_STALE',
+        'PENDING_APPROVAL', 'DRAFT',
+        'Approval request became stale or its schedule expired; revise and resubmit.',
+        target_request
+      );
+    end if;
+
     update public.process_workflow_requests
     set status = 'CANCELLED', resolved_at = now()
     where id = target_request;
@@ -645,7 +679,7 @@ begin
     values (
       request_row.organization_id, caller_id, 'PROCESS_WORKFLOW_REQUEST_CANCELLED_STALE',
       'process_workflow_request', target_request::text,
-      jsonb_build_object('process_id', request_row.process_id)
+      jsonb_build_object('process_id', request_row.process_id, 'action', request_row.action)
     );
 
     return target_request;
@@ -657,6 +691,25 @@ begin
   values (target_request, caller_id, decision, nullif(trim(comment), ''));
 
   if decision = 'REJECT' then
+    if request_row.action = 'APPROVE_PROCESS'
+       and process_row.status = 'PENDING_APPROVAL' then
+      update public.voting_processes
+      set status = 'DRAFT', updated_at = now()
+      where id = request_row.process_id;
+
+      insert into public.process_lifecycle_events (
+        organization_id, process_id, actor_user_id, action,
+        from_status, to_status, reason, workflow_request_id
+      )
+      values (
+        request_row.organization_id, request_row.process_id, caller_id,
+        'PROCESS_APPROVAL_REJECTED',
+        'PENDING_APPROVAL', 'DRAFT',
+        coalesce(nullif(trim(comment), ''), 'Process approval was rejected; revise and resubmit.'),
+        target_request
+      );
+    end if;
+
     update public.process_workflow_requests
     set status = 'REJECTED', resolved_at = now()
     where id = target_request;
