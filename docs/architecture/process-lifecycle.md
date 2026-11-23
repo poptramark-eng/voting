@@ -94,6 +94,17 @@ Migration: `supabase/migrations/20261123160000_process_lifecycle_and_payments.sq
 
 The RPCs are SECURITY DEFINER functions with an empty search path, explicit membership checks and EXECUTE granted only to authenticated users. Direct client status updates remain restricted to DRAFT configuration.
 
+## Draft configuration APIs
+
+All routes require an Auth0 session and active organization membership with OWNER, ADMIN or ELECTION_MANAGER authority. The Supabase RLS policies remain the final authorization boundary.
+
+- `POST /api/organizations/{organizationId}/events`: create an event with `title`, `category`, optional `description` and `assuranceTier`. PUBLIC_ELECTION is disabled in the first release.
+- `POST /api/events/{eventId}/processes`: create a process with `title`, `ballotFormat`, `eligibilityMode`, `assuranceTier`, `opensAt` and `closesAt`. The process tier is raised to at least the parent event tier.
+- `POST /api/processes/{processId}/contests`: create a contest with `title`, optional `description` and `displayOrder`.
+- `POST /api/contests/{contestId}/items`: create a ballot item with `itemType`, `label`, optional `description`, `displayOrder` and `metadata`.
+
+Configuration writes are permitted only while the process is DRAFT. A process cannot be submitted until it has at least one contest containing at least one ballot item.
+
 ## HTTP contracts
 
 ### Submit a process
