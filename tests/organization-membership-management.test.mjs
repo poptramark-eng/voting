@@ -49,3 +49,14 @@ test("member directory RPC exposes member contact data only after OWNER or ADMIN
   assert.match(migration, /public\.list_organization_members[\s\S]*?security invoker/);
   assert.match(migration, /revoke all on function public\.list_organization_members\(uuid\) from public, anon/);
 });
+
+const reactivationFix = readFileSync(
+  new URL("../supabase/migrations/20261123231536_harden_organization_invitation_reactivation.sql", import.meta.url),
+  "utf8"
+);
+
+test("an invitation cannot silently reactivate a removed OWNER or ADMIN", () => {
+  assert.match(reactivationFix, /existing_membership\.status <> 'REMOVED'/);
+  assert.match(reactivationFix, /existing_membership\.role in \('OWNER', 'ADMIN'\)/);
+  assert.match(reactivationFix, /must be explicitly demoted by an OWNER before re-invitation/);
+});
