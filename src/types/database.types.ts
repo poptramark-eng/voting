@@ -372,7 +372,30 @@ export type Database = {
         Row: {
           event_key: string
           provider: string
-          ev      voting_processes: {
+          event_type: string
+          provider_reference: string | null
+          received_at: string
+          processed_at: string | null
+        }
+        Insert: {
+          event_key: string
+          provider?: string
+          event_type: string
+          provider_reference?: string | null
+          received_at?: string
+          processed_at?: string | null
+        }
+        Update: {
+          event_key?: string
+          provider?: string
+          event_type?: string
+          provider_reference?: string | null
+          received_at?: string
+          processed_at?: string | null
+        }
+        Relationships: []
+      }
+      voting_processes: {
         Row: {
           assurance_tier: Database["public"]["Enums"]["assurance_tier"]
           ballot_format: Database["public"]["Enums"]["ballot_format"]
