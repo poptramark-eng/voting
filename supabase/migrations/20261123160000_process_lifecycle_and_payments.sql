@@ -62,6 +62,32 @@ before insert or update of event_id, assurance_tier
 on public.voting_processes
 for each row execute function private.enforce_process_assurance_floor();
 
+create or replace function private.propagate_event_assurance_floor()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if new.assurance_tier is distinct from old.assurance_tier
+     and private.assurance_tier_rank(new.assurance_tier)
+         > private.assurance_tier_rank(old.assurance_tier) then
+    update public.voting_processes
+    set assurance_tier = new.assurance_tier,
+        updated_at = now()
+    where event_id = new.id
+      and private.assurance_tier_rank(assurance_tier)
+          < private.assurance_tier_rank(new.assurance_tier);
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists voting_events_raise_process_assurance on public.voting_events;
+create trigger voting_events_raise_process_assurance
+after update of assurance_tier on public.voting_events
+for each row execute function private.propagate_event_assurance_floor();
+
 create or replace function private.required_process_approvals(target_tier public.assurance_tier)
 returns smallint
 language sql
@@ -571,7 +597,7 @@ begin
     raise exception 'Authenticated application identity is required' using errcode = '28000';
   end if;
 
-  if decision not in ('APPROVE', 'REJECT') then
+  if decision is null or decision not in ('APPROVE', 'REJECT') then
     raise exception 'Decision must be APPROVE or REJECT' using errcode = '22023';
   end if;
 
@@ -755,6 +781,7 @@ $function$;
 
 revoke all on function private.assurance_tier_rank(public.assurance_tier) from public, anon, authenticated;
 revoke all on function private.enforce_process_assurance_floor() from public, anon, authenticated;
+revoke all on function private.propagate_event_assurance_floor() from public, anon, authenticated;
 revoke all on function private.required_process_approvals(public.assurance_tier) from public, anon, authenticated;
 revoke all on function private.create_process_workflow_request(uuid, uuid, uuid, text, text, public.assurance_tier, timestamptz, jsonb) from public, anon, authenticated;
 
