@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth0 } from "@/lib/auth0";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ProcessConfiguration } from "./process-configuration";
+import { ProcessLifecycleControls } from "./process-lifecycle-controls";
 
 type PageProps = { params: Promise<{ processId: string }> };
 
@@ -55,8 +56,37 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
   ]);
 
   // The database re-checks assignment expiry and permission on every write.
-  const canEdit = ["OWNER", "ADMIN"].includes(membership.role) ||
-    Boolean(eventAssignment) || Boolean(processAssignment);
+  const canGovern = ["OWNER", "ADMIN"].includes(membership.role);
+  const canEdit = canGovern || Boolean(eventAssignment) || Boolean(processAssignment);
+
+  type GovernanceApproval = {
+    decision: string;
+    comment: string | null;
+    decided_at: string;
+  };
+  const { data: workflowRows, error: workflowError } = canGovern
+    ? await supabase.from("process_workflow_requests")
+        .select("id, action, status, reason, required_approvals, requested_at")
+        .eq("process_id", processId)
+        .order("requested_at", { ascending: false })
+        .limit(20)
+    : { data: [], error: null };
+  if (workflowError) throw new Error("Unable to load process governance requests.");
+
+  const workflowIds = (workflowRows ?? []).map((request) => request.id);
+  let workflowApprovals: Array<GovernanceApproval & { request_id: string }> = [];
+  if (workflowIds.length > 0) {
+    const { data, error } = await supabase.from("process_workflow_approvals")
+      .select("request_id, decision, comment, decided_at")
+      .in("request_id", workflowIds)
+      .order("decided_at", { ascending: true });
+    if (error) throw new Error("Unable to load governance approvals.");
+    workflowApprovals = data ?? [];
+  }
+  const governanceRequests = (workflowRows ?? []).map((request) => ({
+    ...request,
+    approvals: workflowApprovals.filter((approval) => approval.request_id === request.id),
+  }));
 
   const { data: contests, error: contestsError } = await supabase.from("contests")
     .select("id, title, description, display_order")
@@ -89,6 +119,18 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
         </div>
         <Link className="button secondary" href={`/dashboard/events/${event.id}`}>Back to event</Link>
       </div>
+
+      <section className="panel" style={{ marginTop: 24, maxWidth: "none" }}>
+        <p className="eyebrow">Process governance</p>
+        <h2 style={{ fontSize: 24, margin: "8px 0" }}>Lifecycle and approvals</h2>
+        <p className="muted">Submit draft processes for approval, manage exceptional suspensions and review controlled lifecycle requests.</p>
+        <ProcessLifecycleControls
+          processId={processId}
+          processStatus={process.status}
+          canGovern={canGovern}
+          requests={governanceRequests}
+        />
+      </section>
 
       <section className="panel" style={{ marginTop: 24, maxWidth: "none" }}>
         <p className="eyebrow">Ballot structure</p>
