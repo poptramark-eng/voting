@@ -1827,14 +1827,95 @@ create table public.payment_webhook_events (
   provider text not null default 'PAYSTACK' check (provider = 'PAYSTACK'),
   event_type text not null,
   provider_reference text,
+  event_data jsonb not null default '{}'::jsonb,
+  status text not null default 'RECEIVED'
+    check (status in ('RECEIVED', 'PROCESSING', 'PROCESSED', 'FAILED')),
+  attempt_count integer not null default 0 check (attempt_count >= 0),
+  last_error text,
+  next_attempt_at timestamptz,
+  processing_started_at timestamptz,
   received_at timestamptz not null default now(),
-  processed_at timestamptz
+  processed_at timestamptz,
+  updated_at timestamptz not null default now()
 );
+
+create index payment_webhook_events_retry_idx
+  on public.payment_webhook_events(status, next_attempt_at, received_at);
 
 alter table public.payment_webhook_events enable row level security;
 revoke all on public.payment_webhook_events from public, anon, authenticated;
 grant all on public.payment_webhook_events to service_role;
 
+
+create or replace function public.claim_paystack_webhook_event(target_event_key text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  claimed_event public.payment_webhook_events%rowtype;
+begin
+  if (select auth.jwt() ->> 'role') is distinct from 'service_role' then
+    raise exception 'Service role is required' using errcode = '42501';
+  end if;
+
+  update public.payment_webhook_events
+  set status = 'PROCESSING',
+      attempt_count = attempt_count + 1,
+      processing_started_at = now(),
+      updated_at = now()
+  where event_key = target_event_key
+    and attempt_count < 5
+    and (
+      status = 'RECEIVED'
+      or (status = 'FAILED' and next_attempt_at is not null and next_attempt_at <= now())
+      or (status = 'PROCESSING' and processing_started_at < now() - interval '10 minutes')
+    )
+  returning * into claimed_event;
+
+  if not found then
+    return null;
+  end if;
+
+  return jsonb_build_object(
+    'event_key', claimed_event.event_key,
+    'event_type', claimed_event.event_type,
+    'provider_reference', claimed_event.provider_reference,
+    'event_data', claimed_event.event_data
+  );
+end;
+$function$;
+
+create or replace function public.fail_paystack_webhook_event(
+  target_event_key text,
+  error_message text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if (select auth.jwt() ->> 'role') is distinct from 'service_role' then
+    raise exception 'Service role is required' using errcode = '42501';
+  end if;
+
+  update public.payment_webhook_events
+  set status = 'FAILED',
+      last_error = left(coalesce(error_message, 'Unknown processing error'), 500),
+      next_attempt_at = case
+        when attempt_count < 5 then now() + interval '5 minutes'
+        else null
+      end,
+      processing_started_at = null,
+      updated_at = now()
+  where event_key = target_event_key
+    and status = 'PROCESSING';
+
+  return found;
+end;
+$function$;
 
 create or replace function public.complete_paystack_payment(
   target_reference text,
@@ -1862,48 +1943,48 @@ begin
   for update;
 
   if not found then
-    insert into public.payment_webhook_events (
-      event_key, event_type, provider_reference, processed_at
-    )
-    values (
-      target_event_key, 'charge.success.unmatched', target_reference, now()
-    )
-    on conflict (event_key) do nothing;
+    update public.payment_webhook_events
+    set status = 'FAILED',
+        last_error = 'No payment ledger row matches the verified Paystack reference.',
+        next_attempt_at = null,
+        processing_started_at = null,
+        updated_at = now()
+    where event_key = target_event_key;
     return false;
   end if;
 
   if payment_row.amount_minor <> target_amount_minor
      or payment_row.currency <> target_currency then
-    insert into public.payment_webhook_events (
-      event_key, event_type, provider_reference, processed_at
-    )
-    values (
-      target_event_key, 'charge.success.amount_or_currency_mismatch',
-      target_reference, now()
-    )
-    on conflict (event_key) do nothing;
+    update public.payment_webhook_events
+    set status = 'FAILED',
+        last_error = 'Verified Paystack amount or currency does not match the payment ledger.',
+        next_attempt_at = null,
+        processing_started_at = null,
+        updated_at = now()
+    where event_key = target_event_key;
     return false;
   end if;
 
   if payment_row.status = 'SUCCEEDED' then
-    insert into public.payment_webhook_events (
-      event_key, event_type, provider_reference, processed_at
-    )
-    values (
-      target_event_key, target_event_type, target_reference, now()
-    )
-    on conflict (event_key) do nothing;
-    return false;
+    update public.payment_webhook_events
+    set status = 'PROCESSED',
+        processed_at = coalesce(processed_at, now()),
+        last_error = null,
+        next_attempt_at = null,
+        processing_started_at = null,
+        updated_at = now()
+    where event_key = target_event_key;
+    return true;
   end if;
 
   if payment_row.status not in ('INITIALIZING', 'PENDING') then
-    insert into public.payment_webhook_events (
-      event_key, event_type, provider_reference, processed_at
-    )
-    values (
-      target_event_key, target_event_type || '.ignored', target_reference, now()
-    )
-    on conflict (event_key) do nothing;
+    update public.payment_webhook_events
+    set status = 'FAILED',
+        last_error = 'Payment ledger is not in a state that can be settled.',
+        next_attempt_at = null,
+        processing_started_at = null,
+        updated_at = now()
+    where event_key = target_event_key;
     return false;
   end if;
 
@@ -1914,13 +1995,14 @@ begin
       updated_at = now()
   where id = payment_row.id;
 
-  insert into public.payment_webhook_events (
-    event_key, event_type, provider_reference, processed_at
-  )
-  values (
-    target_event_key, target_event_type, target_reference, now()
-  )
-  on conflict (event_key) do nothing;
+  update public.payment_webhook_events
+  set status = 'PROCESSED',
+      processed_at = now(),
+      last_error = null,
+      next_attempt_at = null,
+      processing_started_at = null,
+      updated_at = now()
+  where event_key = target_event_key;
 
   insert into public.audit_events (
     organization_id, actor_user_id, action, resource_type, resource_id, event_data
@@ -1941,7 +2023,11 @@ begin
 end;
 $function$;
 
+revoke all on function public.claim_paystack_webhook_event(text) from public, anon, authenticated;
+revoke all on function public.fail_paystack_webhook_event(text, text) from public, anon, authenticated;
 revoke all on function public.complete_paystack_payment(text, bigint, text, text, text, text) from public, anon, authenticated;
+grant execute on function public.claim_paystack_webhook_event(text) to service_role;
+grant execute on function public.fail_paystack_webhook_event(text, text) to service_role;
 grant execute on function public.complete_paystack_payment(text, bigint, text, text, text, text) to service_role;
 
 comment on table public.process_lifecycle_events is
