@@ -140,12 +140,10 @@ export function ProcessLifecycleControls({ processId, processStatus, canGovern, 
         ) : null}
       </div>
 
-      {processStatus !== "DRAFT" || processStatus === "SUSPENDED" ? (
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>Reason for the selected action</span>
-          <textarea rows={3} maxLength={2000} value={reason} onChange={(e) => setReason(e.target.value)} style={fieldStyle} placeholder="Explain why this action is necessary." />
-        </label>
-      ) : null}
+      <label style={{ display: "grid", gap: 6 }}>
+        <span>Reason for the selected action (required for suspension and termination)</span>
+        <textarea rows={3} maxLength={2000} value={reason} onChange={(e) => setReason(e.target.value)} style={fieldStyle} placeholder="Explain why this action is necessary." />
+      </label>
       {processStatus === "SUSPENDED" ? (
         <>
           <label style={{ display: "grid", gap: 6 }}>
