@@ -29,7 +29,8 @@ test("process assignment API narrows an existing event role through the database
 });
 
 test("only organization OWNER and ADMIN see scoped assignment administration", () => {
-  assert.match(eventPage, /const canManageAssignments = \["OWNER", "ADMIN"\]\.includes\(membership\.role\)/);
+  assert.match(eventPage, /const canGovern = \["OWNER", "ADMIN"\]\.includes\(membership\.role\)/);
+  assert.match(eventPage, /const canManageAssignments = canGovern/);
   assert.match(eventPage, /canManageAssignments && \([\s\S]*?<EventRoleAssignments/);
   assert.match(processPage, /canGovern && \([\s\S]*?<ProcessRoleAssignments/);
 });
