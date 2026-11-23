@@ -196,11 +196,24 @@ The following is the accepted default permission profile for event- and process-
 6. Voter-identifying data is not implied by an ELECTION_MANAGER or AUDITOR assignment. It requires a separate, purpose-limited authorization, and must be excluded from observer access.
 7. These defaults intentionally keep process lifecycle transitions and final approvals outside the three scoped roles. Any later need for opening/closing/suspending processes must be separately designed, approved and audited rather than inferred from the ELECTION_MANAGER role.
 
-## 12. Open decisions before implementation
+## 12. Voter-identifying data authorization
 
-1. Whether voter-identifying data grants require a separate approval or periodic re-authorization, and which assurance tiers apply.
+Voter-identifying data is protected separately from event- and process-scoped roles. Neither an ELECTION_MANAGER nor an AUDITOR assignment grants access to personally identifying voter data by itself. OBSERVER is never eligible for this access.
+
+- An active OWNER or ADMIN may grant a separate, purpose-specific authorization to an active ELECTION_MANAGER or AUDITOR whose existing event/process assignment covers the relevant data scope.
+- Each grant must identify the organization, event, process (where applicable), recipient, permitted data categories, stated operational or audit purpose, granting actor, creation time and expiry time.
+- Grants must be time-limited and expire automatically. The granting actor must choose an expiry; indefinite grants are prohibited. The platform should support early revocation by an authorized OWNER or ADMIN.
+- Access is limited to the minimum data categories and operations required for the stated purpose. A grant cannot provide ballot-choice access, voter-to-ballot linkage, or permissions outside the recipient's existing event/process assignment.
+- Every grant, access-sensitive change, expiry and revocation must produce attributable audit evidence. Grant creation, modification and revocation must be atomic with their audit records where feasible.
+- The authorization must be checked on every relevant read/export, server-side and through database/RLS enforcement where applicable. Missing, expired, revoked, mismatched-scope or ambiguous grants fail closed.
+- Data exports must apply the same scope, purpose and expiry restrictions as on-screen access. Export events should be separately audited.
+- OWNER/ADMIN approval of a grant does not override applicable privacy law, data minimization, retention rules or higher-assurance separation-of-duties controls.
+
+## 13. Open decisions before implementation
+
+1. Whether voter-identifying data grants require a second approver for enhanced/high/critical assurance processes, and the exact re-authorization cadence.
 2. Whether invitations are email-only initially and which verification rule is required when the Auth0 email is unverified.
 3. Which actions require two-person approval at each assurance tier.
 4. Whether custom roles are part of the first release or a later extension. The initial recommendation is fixed built-in roles mapped to permission identifiers, with custom roles deferred until real customer requirements are validated.
 
-The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, and the default scoped-role permission matrix in Section 11 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
+The multiple-active-OWNER, owner-only ADMIN governance, event- and process-scoped assignment levels, restriction of scoped roles to `ELECTION_MANAGER`, `AUDITOR`, and `OBSERVER`, OWNER/ADMIN authority to manage those scoped assignments, the default scoped-role permission matrix in Section 11, and the separate, purpose-specific, time-limited voter-identifying data authorization in Section 12 are accepted. `OWNER`, `ADMIN`, `BILLING_MANAGER`, and `MEMBER` remain organization-level roles only. Scoped assignments are subordinate to organization-level authority; process-level assignments can further narrow event-level access. The remaining details and the rest of this document remain a design proposal, not authorization to silently change production schema or permissions.
