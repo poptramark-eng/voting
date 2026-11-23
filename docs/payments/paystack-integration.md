@@ -15,7 +15,8 @@ Set these values in local environment and Vercel server-side environment variabl
 | Variable | Purpose |
 |---|---|
 | `PAYSTACK_SECRET_KEY` | Paystack test or live API secret; server only |
-| `PAYSTACK_WEBHOOK_SECRET` | Paystack webhook signing secret beginning with `whsec_`; server only |
+| `PAYSTACK_WEBHOOK_SECRET` | Current Paystack webhook signing secret beginning with `whsec_`; server only |
+| `PAYSTACK_WEBHOOK_SECRET_PREVIOUS` | Optional previous signing secret during rotation overlap; server only |
 | `PAYSTACK_PRICE_CATALOG_JSON` | Server-controlled price catalog |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only key for narrowly scoped payment-ledger writes |
 | `APP_BASE_URL` | Public application base URL used for Paystack callback |
@@ -68,7 +69,7 @@ Configure Paystack to send webhooks to:
 
 The handler:
 1. Reads the raw request body.
-2. Verifies the timestamped `Paystack-Signature` HMAC-SHA512 header with the webhook signing secret, including a 300-second timestamp tolerance. A legacy `X-Paystack-Signature` verification path is retained for integrations that have not yet enabled the signing secret.
+2. Verifies the timestamped `Paystack-Signature` HMAC-SHA512 header with the current or optional previous webhook signing secret, including a 300-second timestamp tolerance. Multiple `v1` signatures are checked to support secret rotation overlap. A legacy `X-Paystack-Signature` verification path is retained for integrations that have not yet enabled the signing secret.
 3. For `charge.success`, independently calls Paystack's transaction verification endpoint.
 4. Checks the verified reference, status, amount and currency against the server-created payment row.
 5. Calls a service-role-only database function that atomically marks the payment successful, records a minimal webhook idempotency event and appends an audit event.
