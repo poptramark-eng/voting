@@ -370,14 +370,6 @@ export type Database = {
         Args: { org_name: string; org_slug: string }
         Returns: string
       }
-      has_org_role: {
-        Args: {
-          allowed_roles: Database["public"]["Enums"]["organization_member_role"][]
-          target_org: string
-        }
-        Returns: boolean
-      }
-      is_active_org_member: { Args: { target_org: string }; Returns: boolean }
     }
     Enums: {
       assurance_tier: "STANDARD" | "ENHANCED" | "HIGH" | "CRITICAL"
