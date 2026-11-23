@@ -74,7 +74,7 @@ export async function POST(request: Request, context: RouteContext) {
     if (
       membershipError ||
       !membership ||
-      !["OWNER", "ADMIN", "ELECTION_MANAGER"].includes(membership.role)
+      !["OWNER", "ADMIN"].includes(membership.role)
     ) {
       return NextResponse.json({ error: "You do not have permission to create events in this organization." }, { status: 403 });
     }
