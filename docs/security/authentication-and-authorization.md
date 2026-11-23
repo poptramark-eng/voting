@@ -58,6 +58,14 @@ Authorization is layered:
 
 RLS is defense in depth, not a replacement for application-level policy checks and security tests. Privileged server operations must still validate organization scope and action permissions.
 
+## Scoped voting-process access
+
+Organization memberships are limited to OWNER, ADMIN, BILLING_MANAGER and MEMBER. ELECTION_MANAGER, AUDITOR and OBSERVER are assigned only at event or process scope. The server-side assignment RPCs require an active OWNER/ADMIN and an active organization membership for the recipient.
+
+Scoped permissions are mapped centrally in `private.scoped_role_permissions`. A process-level assignment is intersected with the event-level permission set; it cannot add a permission that the event-level assignment does not already provide. Revoked or expired process-level overrides fail closed rather than silently falling back to broader event-level access.
+
+Voter-register records contain identifying data. Until the separately approved purpose-specific PII grant workflow is implemented, only OWNER/ADMIN can read or write those records. Scoped ELECTION_MANAGER/AUDITOR assignments do not by themselves reveal voter PII. OBSERVER cannot read ballot-item details or raw audit evidence.
+
 ## Privileged billing operations
 
 The Supabase service-role key is server-only and must never be exposed through a `NEXT_PUBLIC_` variable, browser bundle, client component or log. The billing adapter uses a dedicated server-only client for payment-ledger writes after the request-scoped Auth0/Supabase client has verified the caller's active organization membership and billing role.
