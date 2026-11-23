@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const schema = read("../supabase/migrations/20261123234858_voter_register_finalization_snapshots.sql");
 const rpcHardening = read("../supabase/migrations/20261123235032_harden_voter_register_finalization_rpc.sql");
 const configHardening = read("../supabase/migrations/20261123235249_harden_finalized_register_configuration.sql");
+const grantBinding = read("../supabase/migrations/20261124001500_bind_snapshot_to_pii_grant.sql");
 const workspace = read("../src/app/dashboard/processes/[processId]/voter-register-finalization.tsx");
 const processPage = read("../src/app/dashboard/processes/[processId]/page.tsx");
 const finalizationRoute = read("../src/app/api/processes/[processId]/voter-register/finalization/route.ts");
@@ -60,6 +61,17 @@ test("snapshot PII is not directly readable and public RPCs use invoker wrappers
   assert.match(rpcHardening, /grant execute on function private\.request_voter_register_finalization_impl\(uuid, text\)\s+to authenticated/);
   assert.match(rpcHardening, /no direct API access to voter snapshot PII/);
   assert.doesNotMatch(rpcHardening, /security definer/i);
+});
+
+
+test("pending snapshots remain bound to the exact active PII grant used to create them", () => {
+  assert.match(grantBinding, /create table private\.voter_register_snapshot_pii_grants/);
+  assert.match(grantBinding, /pii_grant_id uuid not null/);
+  assert.match(grantBinding, /private\.user_has_process_permission\([\s\S]*'voter_pii\.read'/);
+  assert.match(grantBinding, /r\.status = 'ACTIVE'/);
+  assert.match(grantBinding, /r\.expires_at > now\(\)/);
+  assert.match(grantBinding, /pii_grant_inactive_or_scope_expired/);
+  assert.match(grantBinding, /set status = 'STALE'/);
 });
 
 test("finalized snapshots block process eligibility-mode and assurance drift", () => {
