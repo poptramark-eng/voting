@@ -34,7 +34,7 @@ begin
  s.total_entry_count,s.eligible_count,s.rejected_count,s.revoked_count,s.created_at,s.finalized_at,
  s.resolved_at,s.reopened_at,case when is_governor then s.reopen_reason else null end,
  (select count(*)::integer from public.voter_register_snapshot_approvals a
-  where a.snapshot_id=s.id and a.decision='APPROVE'),
+  where a.snapshot_id=s.id),
  s.requested_by=caller_id
  from public.voter_register_snapshots s where s.process_id=target_process
  order by s.version desc limit 20;
