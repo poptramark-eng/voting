@@ -22,7 +22,7 @@ test("summary RPC is scoped and returns only minimized metadata", () => {
   assert.match(migration, /private\.has_process_permission\(target_process, 'process\.read'\)/);
   assert.match(migration, /security definer\s+set search_path = ''/);
   assert.match(migration, /security invoker/);
-  assert.match(migration, /revoke all on function public\.read_voter_register_snapshot_summaries\(uuid\) from public,\\s*anon,\\s*service_role/);
+  assert.match(migration, /revoke all on function public\.read_voter_register_snapshot_summaries\(uuid\) from public,\s*anon,\s*service_role/);
   assert.match(route, /read_voter_register_snapshot_summaries/);
   assert.match(workspace, /requested_by_is_current_user/);
   assert.doesNotMatch(migration, /integrity_digest|snapshot_entry_id|contact_email|contact_phone/);
