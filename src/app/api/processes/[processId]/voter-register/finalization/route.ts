@@ -64,7 +64,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
     if (snapshotError) {
       console.error("Voter register snapshot listing failed:", { code: snapshotError.code, message: snapshotError.message });
-      return NextResponse.json({ error: "Unable to load voter register finalization history." }, { status: 500 });
+      return NextResponse.json({ error: "Unable to load voter register finalization history." }, { status: errorStatus(snapshotError.code) });
     }
 
     const snapshotIds = (snapshots ?? []).map((snapshot) => snapshot.id);
