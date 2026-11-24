@@ -32,7 +32,7 @@ test("Resend worker is cron-protected, checks leases, and uses a stable idempote
   assert.match(worker, /CRON_SECRET/);
   assert.match(worker, /createSupabaseAdminClient/);
   assert.match(worker, /is_organization_invitation_email_lease_valid/);
-  assert.match(worker, /Idempotency-Key:\s*item\.outbox_id/);
+  assert.match(worker, /["']Idempotency-Key["']:\s*item\.outbox_id/);
   assert.match(worker, /fail_organization_invitation_email_outbox/);
   assert.match(worker, /complete_organization_invitation_email_outbox/);
 });
