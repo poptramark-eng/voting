@@ -13,7 +13,6 @@ test("invitation delivery stores tokens encrypted and queues atomically", () => 
   assert.match(migration, /digest\(convert_to\(raw_token/);
   assert.match(migration, /insert into public\.organization_invitation_email_outbox/);
   assert.match(migration, /for update of o skip locked/);
-  assert.match(migration, /Idempotency-Key/i.test(migration) ? /./ : /outbox/);
   assert.match(migration, /grant execute on function public\.claim_organization_invitation_email_outbox[\s\S]*to service_role/);
   assert.doesNotMatch(migration, /grant execute on function public\.claim_organization_invitation_email_outbox\(integer\)[\s\S]*to authenticated/);
 });
