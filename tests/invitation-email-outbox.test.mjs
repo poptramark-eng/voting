@@ -48,7 +48,7 @@ test("invitation API queues email while retaining the one-time manual link fallb
   assert.match(ui, /Invitation link/);
 });
 
-test("Vercel cron respects the Hobby plan's fifteen-minute minimum interval", () => {
+test("Vercel Hobby recovery schedule runs daily while invitations trigger prompt delivery", () => {
   const config = JSON.parse(read("../vercel.json"));
 
   assert.equal(Object.keys(config.schedules).length, 1);
