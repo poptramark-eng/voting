@@ -111,7 +111,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     return NextResponse.json(
-      { invitation: data, delivery: "COPY_LINK" },
+      { invitation: data, delivery: "QUEUED" },
       { status: 201, headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
