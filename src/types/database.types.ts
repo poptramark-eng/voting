@@ -1402,6 +1402,28 @@ export type Database = {
         Args: { target_reason: string; target_snapshot: string }
         Returns: string
       }
+      read_voter_register_snapshot_summaries: {
+        Args: { target_process: string }
+        Returns: {
+          approval_count: number
+          assurance_tier: string
+          created_at: string
+          eligible_count: number
+          finalized_at: string | null
+          id: string
+          register_revision: number
+          reopen_reason: string | null
+          reopened_at: string | null
+          rejected_count: number
+          requested_by_is_current_user: boolean
+          required_approvals: number
+          resolved_at: string | null
+          revoked_count: number
+          status: string
+          total_entry_count: number
+          version: number
+        }[]
+      }
       revoke_event_role: {
         Args: { target_event: string; target_user: string }
         Returns: boolean
