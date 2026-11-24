@@ -13,7 +13,6 @@ type Snapshot = {
   id: string;
   version: number;
   status: string;
-  requested_by: string;
   assurance_tier: string;
   required_approvals: number;
   register_revision: number;
@@ -21,13 +20,13 @@ type Snapshot = {
   eligible_count: number;
   rejected_count: number;
   revoked_count: number;
-  integrity_digest: string;
   created_at: string;
   finalized_at: string | null;
   resolved_at: string | null;
   reopened_at: string | null;
-  reopened_by: string | null;
   reopen_reason: string | null;
+  approval_count: number;
+  requested_by_is_current_user: boolean;
   approvals: Approval[];
 };
 
@@ -167,7 +166,7 @@ export function VoterRegisterFinalization({
         <div>
           <p className="eyebrow">Register governance</p>
           <h3 style={{ fontSize: 20, margin: "6px 0" }}>Finalization and version history</h3>
-          <p className="muted">Freeze an eligibility-reviewed register, verify its integrity digest and collect independent approvals.</p>
+          <p className="muted">Freeze an eligibility-reviewed register and collect independent approvals. The platform verifies and retains the integrity record.</p>
         </div>
         <button className="button secondary" type="button" onClick={() => void load()} disabled={loading || Boolean(busyAction)}>
           Refresh history
@@ -206,10 +205,10 @@ export function VoterRegisterFinalization({
       ) : (
         <div className="stack" style={{ marginTop: 16 }}>
           {snapshots.map((snapshot) => {
-            const approvalCount = snapshot.approvals.filter((approval) => approval.decision === "APPROVE").length;
-            const rejected = snapshot.approvals.some((approval) => approval.decision === "REJECT");
+            const approvalCount = snapshot.approval_count;
+            const rejected = snapshot.status === "REJECTED" || snapshot.approvals.some((approval) => approval.decision === "REJECT");
             const canApprove = canGovern && snapshot.status === "PENDING_APPROVAL" &&
-              snapshot.requested_by !== currentUserId && !snapshot.approvals.some((approval) => approval.approver_user_id === currentUserId);
+              !snapshot.requested_by_is_current_user && !snapshot.approvals.some((approval) => approval.approver_user_id === currentUserId);
             const canReopen = canGovern && processStatus === "DRAFT" && snapshot.status === "FINALIZED";
 
             return (
@@ -230,10 +229,7 @@ export function VoterRegisterFinalization({
                   <span className="muted">Revision: <strong>{snapshot.register_revision}</strong></span>
                 </div>
 
-                <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>SHA-256 integrity digest</p>
-                <code style={{ display: "block", overflowWrap: "anywhere", fontSize: 12 }}>{snapshot.integrity_digest}</code>
-
-                {canGovern && snapshot.approvals.length > 0 && (
+{canGovern && snapshot.approvals.length > 0 && (
                   <div style={{ marginTop: 12 }}>
                     <strong style={{ fontSize: 14 }}>Approval history</strong>
                     {snapshot.approvals.map((approval) => (

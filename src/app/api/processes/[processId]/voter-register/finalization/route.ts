@@ -57,16 +57,14 @@ export async function GET(_request: Request, context: RouteContext) {
     }
 
     const canGovern = membership.role === "OWNER" || membership.role === "ADMIN";
-    const { data: snapshots, error: snapshotError } = await supabase
-      .from("voter_register_snapshots")
-      .select("id,version,status,requested_by,assurance_tier,required_approvals,register_revision,total_entry_count,eligible_count,rejected_count,revoked_count,integrity_digest,created_at,finalized_at,resolved_at,reopened_at,reopened_by,reopen_reason")
-      .eq("process_id", processId)
-      .order("version", { ascending: false })
-      .limit(20);
+    const { data: snapshots, error: snapshotError } = await supabase.rpc(
+      "read_voter_register_snapshot_summaries",
+      { target_process: processId },
+    );
 
     if (snapshotError) {
       console.error("Voter register snapshot listing failed:", { code: snapshotError.code, message: snapshotError.message });
-      return NextResponse.json({ error: "Unable to load voter register finalization history." }, { status: 500 });
+      return NextResponse.json({ error: "Unable to load voter register finalization history." }, { status: errorStatus(snapshotError.code) });
     }
 
     const snapshotIds = (snapshots ?? []).map((snapshot) => snapshot.id);
