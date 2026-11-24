@@ -1,0 +1,2 @@
+create index voter_register_snapshot_pii_grants_recipient_idx
+  on private.voter_register_snapshot_pii_grants(recipient_user_id);

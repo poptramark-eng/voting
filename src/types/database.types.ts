@@ -940,6 +940,129 @@ export type Database = {
           },
         ]
       }
+      voter_register_snapshot_approvals: {
+        Row: {
+          approver_user_id: string
+          comment: string | null
+          decided_at: string
+          decision: string
+          id: string
+          snapshot_id: string
+        }
+        Insert: {
+          approver_user_id: string
+          comment?: string | null
+          decided_at?: string
+          decision: string
+          id?: string
+          snapshot_id: string
+        }
+        Update: {
+          approver_user_id?: string
+          comment?: string | null
+          decided_at?: string
+          decision?: string
+          id?: string
+          snapshot_id?: string
+        }
+        Relationships: []
+      }
+      voter_register_snapshot_entries: {
+        Row: {
+          eligibility_status: string
+          identity_payload: Json
+          ordinal: number
+          snapshot_id: string
+          voter_register_entry_id: string
+        }
+        Insert: {
+          eligibility_status: string
+          identity_payload: Json
+          ordinal: number
+          snapshot_id: string
+          voter_register_entry_id: string
+        }
+        Update: {
+          eligibility_status?: string
+          identity_payload?: Json
+          ordinal?: number
+          snapshot_id?: string
+          voter_register_entry_id?: string
+        }
+        Relationships: []
+      }
+      voter_register_snapshots: {
+        Row: {
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          created_at: string
+          eligible_count: number
+          event_id: string
+          finalized_at: string | null
+          id: string
+          integrity_digest: string
+          organization_id: string
+          process_id: string
+          reopened_at: string | null
+          reopened_by: string | null
+          reopen_reason: string | null
+          rejected_count: number
+          register_revision: number
+          requested_by: string
+          required_approvals: number
+          resolved_at: string | null
+          revoked_count: number
+          status: string
+          total_entry_count: number
+          version: number
+        }
+        Insert: {
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          created_at?: string
+          eligible_count: number
+          event_id: string
+          finalized_at?: string | null
+          id?: string
+          integrity_digest: string
+          organization_id: string
+          process_id: string
+          reopened_at?: string | null
+          reopened_by?: string | null
+          reopen_reason?: string | null
+          rejected_count: number
+          register_revision: number
+          requested_by: string
+          required_approvals: number
+          resolved_at?: string | null
+          revoked_count: number
+          status?: string
+          total_entry_count: number
+          version: number
+        }
+        Update: {
+          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
+          created_at?: string
+          eligible_count?: number
+          event_id?: string
+          finalized_at?: string | null
+          id?: string
+          integrity_digest?: string
+          organization_id?: string
+          process_id?: string
+          reopened_at?: string | null
+          reopened_by?: string | null
+          reopen_reason?: string | null
+          rejected_count?: number
+          register_revision?: number
+          requested_by?: string
+          required_approvals?: number
+          resolved_at?: string | null
+          revoked_count?: number
+          status?: string
+          total_entry_count?: number
+          version?: number
+        }
+        Relationships: []
+      }
       voter_register_entries: {
         Row: {
           contact_email: string | null
@@ -1067,6 +1190,7 @@ export type Database = {
           title: string
           updated_at: string
           vote_change_policy: Json
+          voter_register_revision: number
         }
         Insert: {
           assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
@@ -1083,6 +1207,7 @@ export type Database = {
           title: string
           updated_at?: string
           vote_change_policy?: Json
+          voter_register_revision?: number
         }
         Update: {
           assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
@@ -1099,6 +1224,7 @@ export type Database = {
           title?: string
           updated_at?: string
           vote_change_policy?: Json
+          voter_register_revision?: number
         }
         Relationships: [
           {
@@ -1262,6 +1388,18 @@ export type Database = {
           target_recipient: string
           target_scope: string
         }
+        Returns: string
+      }
+      request_voter_register_finalization: {
+        Args: { target_process: string; target_reason: string }
+        Returns: string
+      }
+      decide_voter_register_finalization: {
+        Args: { target_comment?: string; target_decision: string; target_snapshot: string }
+        Returns: string
+      }
+      reopen_voter_register_snapshot: {
+        Args: { target_reason: string; target_snapshot: string }
         Returns: string
       }
       revoke_event_role: {
