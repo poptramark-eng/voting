@@ -110,6 +110,30 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: error.message }, { status: errorStatus(error.code) });
     }
 
+    // Trigger prompt delivery after the invitation and outbox row have committed.
+    // The scheduled worker remains the recovery path if this best-effort request fails.
+    const appBaseUrl = process.env.APP_BASE_URL;
+    const cronSecret = process.env.CRON_SECRET;
+    if (appBaseUrl && cronSecret) {
+      try {
+        const workerUrl = new URL("/api/internal/notifications/process-invitations", appBaseUrl);
+        const workerResponse = await fetch(workerUrl, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${cronSecret}` },
+          cache: "no-store",
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!workerResponse.ok) {
+          console.warn("Invitation email worker did not complete immediately:", workerResponse.status);
+        }
+      } catch (deliveryError) {
+        console.warn(
+          "Invitation email remains queued for scheduled retry:",
+          deliveryError instanceof Error ? deliveryError.message : "UNKNOWN",
+        );
+      }
+    }
+
     return NextResponse.json(
       { invitation: data, delivery: "QUEUED" },
       { status: 201, headers: { "Cache-Control": "no-store" } },
