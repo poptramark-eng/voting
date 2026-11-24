@@ -103,7 +103,7 @@ export function parseVoterRegisterCsv(source: string): CsvImportResult {
     return { ok: false, error: "The CSV must contain a header and at least one valid voter row." };
   }
   if (records.length - 1 > MAX_ROWS) {
-    return { ok: false, error: "A single import can contain at most " + MAX_ROWS + " voters.";
+    return { ok: false, error: "A single import can contain at most " + MAX_ROWS + " voters." };
   }
 
   const headers = records[0].map(normalizeHeader);
