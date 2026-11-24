@@ -170,9 +170,14 @@ export function parseVoterRegisterCsv(source: string): CsvImportResult {
     }
 
     const value = (column: number | null) => column === null ? "" : record[column].trim();
+    const firstName = value(firstNameIndex);
+    const lastName = value(lastNameIndex);
+    if (nameIndex === null && (!firstName || !lastName)) {
+      return { ok: false, error: "Row " + (index + 1) + " must contain both a first name and a last name." };
+    }
     const displayName = nameIndex !== null
       ? value(nameIndex)
-      : [value(firstNameIndex), value(lastNameIndex)].filter(Boolean).join(" ");
+      : [firstName, lastName].join(" ");
     const reference = value(referenceIndex);
     const email = value(emailIndex).toLowerCase();
     const phone = value(phoneIndex);
