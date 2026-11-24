@@ -53,11 +53,11 @@ test("invitation API queues email while retaining the one-time manual link fallb
   assert.match(ui, /Invitation link/);
 });
 
-test("Vercel Schedules recovers queued invitation emails every fifteen minutes", () => {
+test("Vercel Hobby Schedule provides daily recovery for queued invitation emails", () => {
   const config = JSON.parse(read("../vercel.json"));
 
   assert.equal(Object.keys(config.schedules).length, 1);
   assert.equal(config.schedules["invitation-email-worker"].path, "/api/internal/notifications/process-invitations");
   assert.equal(config.schedules["invitation-email-worker"].requestMethod, "GET");
-  assert.equal(config.schedules["invitation-email-worker"].schedule, "*/15 * * * *");
+  assert.equal(config.schedules["invitation-email-worker"].schedule, "0 0 * * *");
 });
