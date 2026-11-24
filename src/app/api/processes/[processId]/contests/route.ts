@@ -41,21 +41,29 @@ export async function POST(request: Request, context: RouteContext) {
 
   try {
     const supabase = await createSupabaseServerClient();
-    const { data: contest, error } = await supabase
-      .from("contests")
-      .insert({
-        process_id: processId,
-        title,
-        description,
-        display_order: displayOrder,
-      })
+    const contestId = crypto.randomUUID();
+    const { error: insertError } = await supabase.from("contests").insert({
+      id: contestId,
+      process_id: processId,
+      title,
+      description,
+      display_order: displayOrder,
+    });
+
+    if (insertError) {
+      const status = insertError.code === "42501" ? 403 : insertError.code === "23503" ? 404 : 400;
+      console.error("Contest creation failed:", { code: insertError.code, message: insertError.message });
+      return NextResponse.json({ error: "Unable to create the contest. Confirm the process is a draft and you have manager access." }, { status });
+    }
+
+    const { data: contest, error: readError } = await supabase.from("contests")
       .select("id, process_id, title, description, display_order, created_at")
+      .eq("id", contestId)
       .single();
 
-    if (error || !contest) {
-      const status = error?.code === "42501" ? 403 : error?.code === "23503" ? 404 : 400;
-      console.error("Contest creation failed:", { code: error?.code, message: error?.message });
-      return NextResponse.json({ error: "Unable to create the contest. Confirm the process is a draft and you have manager access." }, { status });
+    if (readError || !contest) {
+      console.error("Contest was created but could not be loaded:", { code: readError?.code, message: readError?.message });
+      return NextResponse.json({ error: "The contest was created but could not be loaded. Refresh the page." }, { status: 500 });
     }
 
     return NextResponse.json({ contest }, { status: 201 });
