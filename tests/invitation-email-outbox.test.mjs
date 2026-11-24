@@ -43,6 +43,8 @@ test("invitation API queues email while retaining the one-time manual link fallb
 
   assert.match(route, /delivery: "QUEUED"/);
   assert.match(route, /process-invitations/);
+  assert.match(route, /new URL\([\s\S]*request\.url\)/);
+  assert.doesNotMatch(route, /new URL\([\s\S]*appBaseUrl\)/);
   assert.match(route, /AbortSignal\.timeout\(8000\)/);
   assert.match(ui, /queued for email delivery/);
   assert.match(ui, /Invitation link/);
