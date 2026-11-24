@@ -105,3 +105,29 @@ No credential or ballot schema migration should be merged until these questions 
 - Define the first-release voter proofing and recovery process.
 - Design the ballot encryption and threshold-tally protocol with independent trustees.
 - Keep ballot casting disabled until all acceptance gates for the intended assurance tier are met.
+
+
+## Initial implementation feasibility review — 2026-11-24
+
+A first source-level screen was performed using the upstream GitHub repositories. This is not a security audit and does not select a production dependency.
+
+| Candidate | Evidence found | Blocking concerns | Current disposition |
+|---|---|---|---|
+| Cloudflare `@cloudflare/blindrsa-ts` 0.4.6 | Apache-2.0; implements the four RFC 9474 RSABSSA variants; repository tests include RFC Appendix A vectors. | Declares Node.js `>=24` while this app currently targets Node 22. The implementation exports JWK private-key parameters and requires extractable `CryptoKey` objects; its software signing path uses SJCL big-integer operations. The `supportsRSARAW` optimization still calls the key-extraction path. No independent audit report was found in the reviewed repository. | Not suitable as a direct dependency for the current Node 22 app or a non-exportable HSM key. Revisit only after a separate signer design and independent review. |
+| Cloudflare CIRCL Go `blindsign/blindrsa` | Upstream source implements RFC 9474 variants and includes explicit guidance preferring randomized variants in malicious-signer settings. | Its signer accepts a Go `*rsa.PrivateKey`; an HSM-backed `crypto.Signer` integration is not provided by the reviewed API. | Candidate for an isolated Go signer only if key custody is solved; not selected. |
+| `jedisct1/rust-blind-rsa-signatures` 0.19.0 | MIT-licensed; repository describes RFC 9474 support and exposes SHA-384 randomized variants. | The reviewed API holds an in-process software secret key. HSM integration is not provided by the reviewed API. Dependencies and side-channel posture still require a full audit. | Candidate for an isolated signer prototype, not selected. |
+| Bouncy Castle Java RFC 9474 classes | Upstream Java source includes RSABSSA client/server implementations and uses an RSA-blinded engine for the server operation. | The reviewed lightweight server accepts `RSAKeyParameters` containing private key material; HSM/PKCS#11 integration is not demonstrated by this class. | Candidate for further research, not selected. |
+
+### Additional protocol issue: lost or reissued credentials
+
+A blind-signed one-use token cannot be safely reissued just because a voter says the token was lost. If the old token still exists, both the old and replacement token could be spent. The ballot box cannot deduplicate by voter identity without reintroducing a link to the voter.
+
+Therefore, do not implement credential reissue or recovery by simply issuing a second blind token. A first-release policy must either:
+- prohibit reissue and explicitly handle a lost credential as an unresolved support case; or
+- adopt a reviewed anonymous-credential/nullifier or revocation protocol that proves one eligible person can produce only one accepted ballot per process without exposing their identity.
+
+This is a protocol decision, not an ordinary account-recovery feature.
+
+### Review conclusion
+
+No reviewed implementation currently meets all of the platform's immediate constraints: Node 22 compatibility, RFC 9474 test-vector support, no export of long-term private key material, independently reviewed constant-time signing behavior and a credible HSM/key-custody path. Keep the candidate list open. Do not vendor, fork or hand-roll blind RSA as a shortcut.
