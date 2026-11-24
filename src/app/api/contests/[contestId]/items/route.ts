@@ -51,23 +51,31 @@ export async function POST(request: Request, context: RouteContext) {
 
   try {
     const supabase = await createSupabaseServerClient();
-    const { data: item, error } = await supabase
-      .from("ballot_items")
-      .insert({
-        contest_id: contestId,
-        item_type: itemType,
-        label,
-        description,
-        display_order: displayOrder,
-        metadata,
-      })
+    const itemId = crypto.randomUUID();
+    const { error: insertError } = await supabase.from("ballot_items").insert({
+      id: itemId,
+      contest_id: contestId,
+      item_type: itemType,
+      label,
+      description,
+      display_order: displayOrder,
+      metadata,
+    });
+
+    if (insertError) {
+      const status = insertError.code === "42501" ? 403 : insertError.code === "23503" ? 404 : 400;
+      console.error("Ballot item creation failed:", { code: insertError.code, message: insertError.message });
+      return NextResponse.json({ error: "Unable to create the ballot item. Confirm the process is a draft and you have manager access." }, { status });
+    }
+
+    const { data: item, error: readError } = await supabase.from("ballot_items")
       .select("id, contest_id, item_type, label, description, display_order, created_at")
+      .eq("id", itemId)
       .single();
 
-    if (error || !item) {
-      const status = error?.code === "42501" ? 403 : error?.code === "23503" ? 404 : 400;
-      console.error("Ballot item creation failed:", { code: error?.code, message: error?.message });
-      return NextResponse.json({ error: "Unable to create the ballot item. Confirm the process is a draft and you have manager access." }, { status });
+    if (readError || !item) {
+      console.error("Ballot item was created but could not be loaded:", { code: readError?.code, message: readError?.message });
+      return NextResponse.json({ error: "The ballot item was created but could not be loaded. Refresh the page." }, { status: 500 });
     }
 
     return NextResponse.json({ item }, { status: 201 });
