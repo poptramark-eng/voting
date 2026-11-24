@@ -1,9 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [
-    {
+  "schedules": {
+    "invitation-email-worker": {
+      "schedule": "*/15 * * * *",
       "path": "/api/internal/notifications/process-invitations",
-      "schedule": "*/15 * * * *"
+      "requestMethod": "GET"
     }
-  ]
+  }
 }
