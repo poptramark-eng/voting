@@ -104,11 +104,13 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "An active organization membership is required." }, { status: 403 });
     }
 
-    // The INSERT RLS policy decides whether this member is OWNER/ADMIN or has
-    // an active event-scoped ELECTION_MANAGER permission.
-    const { data: process, error } = await supabase
+    // Generate the identifier before insertion so the INSERT does not need
+    // PostgreSQL RETURNING. The separate SELECT is still governed by read RLS.
+    const processId = crypto.randomUUID();
+    const { error: insertError } = await supabase
       .from("voting_processes")
       .insert({
+        id: processId,
         event_id: eventId,
         title,
         ballot_format: ballotFormat as BallotFormat,
@@ -119,13 +121,29 @@ export async function POST(request: Request, context: RouteContext) {
         vote_change_policy: { kind: "DISABLED" } as Json,
         results_disclosure: { kind: "AFTER_CLOSURE" } as Json,
         created_by: user.id,
-      })
+      });
+
+    if (insertError) {
+      console.error("Voting process creation failed:", {
+        code: insertError.code,
+        message: insertError.message,
+      });
+      return NextResponse.json({ error: "Unable to create the voting process." }, { status: 400 });
+    }
+
+    const { data: process, error: readError } = await supabase
+      .from("voting_processes")
       .select("id, title, status, assurance_tier, opens_at, closes_at")
+      .eq("id", processId)
       .single();
 
-    if (error || !process) {
-      console.error("Voting process creation failed:", { code: error?.code, message: error?.message });
-      return NextResponse.json({ error: "Unable to create the voting process." }, { status: 400 });
+    if (readError || !process) {
+      console.error("Voting process was inserted but could not be read:", {
+        code: readError?.code,
+        message: readError?.message,
+        processId,
+      });
+      return NextResponse.json({ error: "The voting process was created but could not be loaded. Refresh the page." }, { status: 500 });
     }
 
     return NextResponse.json({ process }, { status: 201 });
