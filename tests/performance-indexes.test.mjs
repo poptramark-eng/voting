@@ -31,7 +31,7 @@ test("all 15 remaining foreign keys receive a covering index", () => {
 });
 
 test("app_users RLS evaluates the Auth0 JWT once per statement", () => {
-  assert.equal((migration.match(/\(\(select auth\.jwt\(\)\) ->>/g) ?? []).length, 6);
+  assert.equal((migration.match(/\(\(select auth\.jwt\(\)\) ->>/g) ?? []).length, 8);
   assert.match(migration, /users can read their own application identity/);
   assert.match(migration, /users can provision their own application identity/);
   assert.match(migration, /users can sync their own application identity/);
