@@ -154,6 +154,17 @@ export async function GET(request: Request) {
 
     for (const item of (items ?? []) as OutboxItem[]) {
       try {
+        const { data: leaseValid, error: leaseError } = await supabase.rpc(
+          "is_organization_invitation_email_lease_valid",
+          {
+            target_outbox: item.outbox_id,
+            target_lock_token: item.lock_token,
+          },
+        );
+
+        if (leaseError) throw new Error("OUTBOX_LEASE_CHECK_FAILED");
+        if (!leaseValid) continue;
+
         const providerEmailId = await sendInvitationEmail(item, apiKey, from);
         const { error: completeError } = await supabase.rpc(
           "complete_organization_invitation_email_outbox",
