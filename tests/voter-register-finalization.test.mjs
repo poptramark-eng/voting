@@ -111,7 +111,7 @@ test("process workspace exposes snapshot governance without exposing copied PII"
   assert.match(workspace, /Submit for independent approval/);
   assert.match(workspace, /Approve snapshot/);
   assert.match(workspace, /Reopen register/);
-  assert.match(workspace, /integrity_digest/);
+  assert.doesNotMatch(workspace, /integrity_digest/);
   assert.doesNotMatch(workspace, /identity_payload|contact_email|contact_phone/);
   assert.match(databaseTypes, /voter_register_snapshots:/);
   assert.match(databaseTypes, /voter_register_revision: number/);
