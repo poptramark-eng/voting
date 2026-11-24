@@ -38,7 +38,7 @@ test("accepts the supplied Excel-style voter register headings and combines name
   ]);
 
   const sanitized = serializeVoterRegisterCsv(result.rows);
-  assert.match(sanitized, /^"name","external_reference","email","phone"/);
+  assert.match(sanitized, /^name,external_reference,email,phone/);
   assert.match(sanitized, /VOT-0001/);
   assert.doesNotMatch(sanitized, /29014567|Kakamega|1998-04-12|Male/);
 });
