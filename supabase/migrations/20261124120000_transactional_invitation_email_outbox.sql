@@ -83,7 +83,7 @@ begin
 
   if target_org is null
      or normalized_email is null
-     or normalized_email !~ '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$'
+     or normalized_email !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
      or length(normalized_email) > 254
      or target_role is null
      or target_role not in ('ADMIN', 'BILLING_MANAGER', 'MEMBER') then
