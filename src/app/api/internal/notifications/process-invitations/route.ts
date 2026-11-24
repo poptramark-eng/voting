@@ -37,7 +37,11 @@ function invitationRoleLabel(role: OutboxItem["role"]): string {
 }
 
 function getInvitationUrl(token: string): string {
-  const baseUrl = process.env.APP_BASE_URL;
+  const deploymentUrl = process.env.VERCEL_URL;
+  const baseUrl =
+    process.env.VERCEL_ENV === "preview" && deploymentUrl
+      ? `https://${deploymentUrl}`
+      : process.env.APP_BASE_URL;
   if (!baseUrl) throw new Error("APP_BASE_URL_MISSING");
 
   const url = new URL("/auth/accept-invitation", baseUrl);
