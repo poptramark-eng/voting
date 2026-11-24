@@ -49,7 +49,8 @@ test("invitation API queues email while retaining the one-time manual link fallb
 test("Vercel cron respects the Hobby plan's fifteen-minute minimum interval", () => {
   const config = JSON.parse(read("../vercel.json"));
 
-  assert.equal(config.crons.length, 1);
-  assert.equal(config.crons[0].path, "/api/internal/notifications/process-invitations");
-  assert.equal(config.crons[0].schedule, "*/15 * * * *");
+  assert.equal(Object.keys(config.schedules).length, 1);
+  assert.equal(config.schedules["invitation-email-worker"].path, "/api/internal/notifications/process-invitations");
+  assert.equal(config.schedules["invitation-email-worker"].requestMethod, "GET");
+  assert.equal(config.schedules["invitation-email-worker"].schedule, "*/15 * * * *");
 });
