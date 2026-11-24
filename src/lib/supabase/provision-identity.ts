@@ -5,13 +5,17 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 type Auth0IdentityProfile = {
   sub: string;
   email?: string | null;
+  email_verified?: boolean;
   name?: string | null;
 };
 
 /**
- * Synchronizes the verified Auth0 session identity into the private application
- * identity table. Call only with the user object from the validated Auth0 SDK
- * session; never accept an Auth0 subject from browser input.
+ * Synchronizes the validated Auth0 subject and profile into the application
+ * identity table. Only a provider-verified email is persisted because this
+ * address participates in invitation and membership workflows.
+ *
+ * Call only with the user object from the validated Auth0 SDK session; never
+ * accept an Auth0 subject or profile from browser input.
  */
 export async function provisionApplicationIdentity(profile: Auth0IdentityProfile) {
   if (!profile.sub || !profile.sub.trim()) {
@@ -20,7 +24,9 @@ export async function provisionApplicationIdentity(profile: Auth0IdentityProfile
 
   const identity = {
     auth_subject: profile.sub,
-    ...(typeof profile.email === "string" ? { email: profile.email } : {}),
+    email: profile.email_verified === true && typeof profile.email === "string"
+      ? profile.email.trim().toLowerCase()
+      : null,
     ...(typeof profile.name === "string" ? { display_name: profile.name } : {}),
   };
 
