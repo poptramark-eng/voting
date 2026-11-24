@@ -13,7 +13,7 @@ test("RLS-protected create routes avoid INSERT RETURNING", () => {
     assert.match(source, /crypto\.randomUUID\(\)/);
     assert.match(source, /\.insert\(\{/);
     assert.match(source, /id:\s*(?:processId|contestId|itemId)/);
-    assert.doesNotMatch(source, /\.insert\([\s\S]{0,1200}?\)\s*\.select\(/);
+    assert.doesNotMatch(source, /\.insert\(\{[\s\S]*?\}\)\s*\.select\(/);
   }
 });
 
