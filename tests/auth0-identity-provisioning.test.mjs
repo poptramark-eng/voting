@@ -13,6 +13,8 @@ test("application identity provisioning uses the server-only service-role client
   assert.match(provision, /createSupabaseAdminClient/);
   assert.match(provision, /from\(["']app_users["']\)\s*\.upsert/);
   assert.match(provision, /onConflict:\s*["']auth_subject["']/);
+  assert.match(provision, /profile\.email_verified\s*===\s*true/);
+  assert.match(provision, /email:\s*profile\.email_verified/);
   assert.match(admin, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(admin, /createClient<Database>/);
 });
