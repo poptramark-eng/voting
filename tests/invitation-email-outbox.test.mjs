@@ -30,6 +30,9 @@ test("Resend worker is cron-protected, checks leases, and uses a stable idempote
   const worker = read("../src/app/api/internal/notifications/process-invitations/route.ts");
 
   assert.match(worker, /CRON_SECRET/);
+  assert.match(worker, /process\.env\.VERCEL_ENV === "preview"/);
+  assert.match(worker, /process\.env\.VERCEL_URL/);
+  assert.match(worker, /process\.env\.APP_BASE_URL/);
   assert.match(worker, /createSupabaseAdminClient/);
   assert.match(worker, /is_organization_invitation_email_lease_valid/);
   assert.match(worker, /["']Idempotency-Key["']:\s*item\.outbox_id/);
