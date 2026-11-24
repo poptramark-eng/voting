@@ -42,6 +42,8 @@ test("invitation API queues email while retaining the one-time manual link fallb
   const ui = read("../src/app/dashboard/organizations/[organizationId]/organization-members.tsx");
 
   assert.match(route, /delivery: "QUEUED"/);
+  assert.match(route, /process-invitations/);
+  assert.match(route, /AbortSignal\.timeout\(8000\)/);
   assert.match(ui, /queued for email delivery/);
   assert.match(ui, /Invitation link/);
 });
@@ -52,5 +54,5 @@ test("Vercel cron respects the Hobby plan's fifteen-minute minimum interval", ()
   assert.equal(Object.keys(config.schedules).length, 1);
   assert.equal(config.schedules["invitation-email-worker"].path, "/api/internal/notifications/process-invitations");
   assert.equal(config.schedules["invitation-email-worker"].requestMethod, "GET");
-  assert.equal(config.schedules["invitation-email-worker"].schedule, "*/15 * * * *");
+  assert.equal(config.schedules["invitation-email-worker"].schedule, "0 9 * * *");
 });
