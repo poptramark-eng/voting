@@ -27,7 +27,7 @@ export function VoterRegisterImport({ processId, canEdit }: { processId: string;
       const parsed = parseVoterRegisterCsv(await file.text());
       if (!parsed.ok) throw new Error(parsed.error);
 
-      const response = await fetch(\`/api/processes/\${processId}/voter-register/import\`, {
+      const response = await fetch("/api/processes/" + processId + "/voter-register/import", {
         method: "POST",
         headers: { "Content-Type": "text/csv" },
         body: serializeVoterRegisterCsv(parsed.rows),
