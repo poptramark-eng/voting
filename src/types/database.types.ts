@@ -1481,6 +1481,10 @@ export type Database = {
         Args: { target_permission: string; target_process: string }
         Returns: boolean
       }
+      is_organization_invitation_email_lease_valid: {
+        Args: { target_lock_token: string; target_outbox: string }
+        Returns: boolean
+      }
       list_organization_invitations: {
         Args: { target_org: string }
         Returns: {
