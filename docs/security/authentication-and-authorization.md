@@ -80,3 +80,12 @@ The Paystack webhook verifies the raw request signature, verifies successful tra
 - Test unmapped subjects resolve to no internal user and cannot read/write tenant data.
 - Test cross-tenant reads/writes, suspended memberships, role changes, session revocation and organization switching.
 - Confirm the Auth0 organization claim is never treated as a substitute for database authorization.
+
+
+## Public-schema grants and default privileges
+
+- Anonymous ballot and public read access are disabled for the current Auth0-backed release. No public election or unauthenticated ballot surface is enabled.
+- Existing application tables in `public` have RLS enabled. Anonymous table privileges are revoked; authenticated table access is granted only where a specific RLS-backed workflow requires it.
+- New tables and sequences created by the application migration owner (`postgres`) do not inherit anon/authenticated privileges. New functions do not inherit EXECUTE for PUBLIC, anon, authenticated or service_role. Every migration must explicitly grant only the roles and operations required by that object, and must pair exposed tables with reviewed RLS policies.
+- The project connector cannot change default privileges for Supabase's separate `supabase_admin` owner; current application objects are owned by `postgres`, so the application migration path is covered. Revisit if object ownership or migration execution role changes.
+- Do not enable public election reads or anonymous ballot submission without a separate reviewed threat model, credential protocol and explicit policy migration.
