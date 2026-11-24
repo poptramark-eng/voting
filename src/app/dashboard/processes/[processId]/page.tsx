@@ -176,6 +176,15 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
     approvals: workflowApprovals.filter((approval) => approval.request_id === request.id),
   }));
 
+  const { data: lifecycleEvents, error: lifecycleError } = canGovern
+    ? await supabase.from("process_lifecycle_events")
+        .select("id, action, from_status, to_status, reason, occurred_at")
+        .eq("process_id", processId)
+        .order("occurred_at", { ascending: false })
+        .limit(30)
+    : { data: [], error: null };
+  if (lifecycleError) throw new Error("Unable to load process lifecycle history.");
+
   const { data: contests, error: contestsError } = await supabase.from("contests")
     .select("id, title, description, display_order")
     .eq("process_id", processId).order("display_order", { ascending: true });
@@ -218,6 +227,25 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
           canGovern={canGovern}
           requests={governanceRequests}
         />
+        {canGovern ? (
+          <div style={{ borderTop: "1px solid var(--border)", marginTop: 20, paddingTop: 18 }}>
+            <h3 style={{ margin: "0 0 12px" }}>Lifecycle history</h3>
+            {lifecycleEvents && lifecycleEvents.length > 0 ? (
+              <ol className="stack" style={{ paddingLeft: 22 }}>
+                {lifecycleEvents.map((event) => (
+                  <li key={event.id}>
+                    <strong>{event.action.replaceAll("_", " ")}</strong>
+                    <span className="muted"> · {event.from_status.replaceAll("_", " ")} → {event.to_status.replaceAll("_", " ")}</span>
+                    <p style={{ margin: "4px 0" }}>{event.reason}</p>
+                    <p className="muted" style={{ margin: 0 }}>{new Date(event.occurred_at).toLocaleString()}</p>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="muted">No lifecycle transitions have been recorded yet.</p>
+            )}
+          </div>
+        ) : null}
       </section>
 
       {canGovern && (
