@@ -62,3 +62,4 @@ Status: modular-monolith decision accepted; identity boundary defined; implement
 - Kenya legal, regulatory and privacy review.
 
 - [ADR 0003: Separate voter eligibility from anonymous ballot casting](./adr/0003-anonymous-voter-credentials-and-ballot-separation.md) — proposed credential issuance and ballot separation; requires protocol and cryptographic review before implementation.
+- [Voter credential and anonymous ballot threat model](../security/voter-credential-threat-model.md) — working threat model and release gates for the next voting workflow.
