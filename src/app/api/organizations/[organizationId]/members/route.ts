@@ -112,11 +112,11 @@ export async function POST(request: Request, context: RouteContext) {
 
     // Trigger prompt delivery after the invitation and outbox row have committed.
     // The scheduled worker remains the recovery path if this best-effort request fails.
-    const appBaseUrl = process.env.APP_BASE_URL;
     const cronSecret = process.env.CRON_SECRET;
-    if (appBaseUrl && cronSecret) {
+    if (cronSecret) {
       try {
-        const workerUrl = new URL("/api/internal/notifications/process-invitations", appBaseUrl);
+        // Use this deployment origin so Preview never invokes the Production worker.
+        const workerUrl = new URL("/api/internal/notifications/process-invitations", request.url);
         const workerResponse = await fetch(workerUrl, {
           method: "GET",
           headers: { Authorization: `Bearer ${cronSecret}` },
