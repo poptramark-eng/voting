@@ -19,7 +19,7 @@ test("snapshot digest and requester identifiers are not exposed through the tabl
 
 test("summary RPC is scoped and returns only minimized metadata", () => {
   assert.match(migration, /private\.current_app_user_id\(\)/);
-  assert.match(migration, /private\.has_process_permission\(target_process, 'process\.read'\)/);
+  assert.match(migration, /private\.has_process_permission\(target_process,\s*'process\.read'\)/);
   assert.match(migration, /security definer\s+set search_path = ''/);
   assert.match(migration, /security invoker/);
   assert.match(migration, /revoke all on function public\.read_voter_register_snapshot_summaries\(uuid\) from public,\s*anon,\s*service_role/);
