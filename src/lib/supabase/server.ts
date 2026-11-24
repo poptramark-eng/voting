@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 import { auth0 } from "@/lib/auth0";
+import { provisionApplicationIdentity } from "@/lib/supabase/provision-identity";
 import type { Database } from "@/types/database.types";
 
 function readJwtRoleClaim(token: string): string | undefined {
@@ -47,7 +48,11 @@ export async function createSupabaseServerClient() {
     throw new Error("SUPABASE_ENVIRONMENT_MISSING");
   }
 
-  const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
+  // Provision the trusted Auth0 identity through the server-only service-role
+  // client. app_users intentionally has no ordinary-client write policy.
+  await provisionApplicationIdentity(session.user);
+
+  return createClient<Database>(supabaseUrl, supabasePublishableKey, {
     accessToken: async () => idToken,
     auth: {
       autoRefreshToken: false,
@@ -55,23 +60,4 @@ export async function createSupabaseServerClient() {
       detectSessionInUrl: false,
     },
   });
-
-  const { error } = await supabase.from("app_users").upsert(
-    {
-      auth_subject: session.user.sub,
-      email: session.user.email ?? null,
-      display_name: session.user.name ?? null,
-    },
-    { onConflict: "auth_subject" }
-  );
-
-  if (error) {
-    console.error("Supabase application identity provisioning failed:", {
-      code: error.code,
-      message: error.message,
-    });
-    throw new Error("SUPABASE_IDENTITY_PROVISIONING_FAILED");
-  }
-
-  return supabase;
 }
