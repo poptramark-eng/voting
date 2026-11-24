@@ -55,8 +55,12 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
     { data: scopedCanEdit, error: editPermissionError },
     { data: scopedCanManageRegister, error: registerPermissionError },
     { data: scopedCanReadPii, error: piiPermissionError },
+    { data: scopedCanReadLifecycle, error: lifecyclePermissionError },
+    { data: scopedCanReadAudit, error: auditPermissionError },
   ] = canGovern
     ? [
+        { data: false, error: null },
+        { data: false, error: null },
         { data: false, error: null },
         { data: false, error: null },
         { data: false, error: null },
@@ -74,9 +78,17 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
           target_process: processId,
           target_permission: "voter_pii.read",
         }),
+        supabase.rpc("has_current_process_permission", {
+          target_process: processId,
+          target_permission: "process.lifecycle.read",
+        }),
+        supabase.rpc("has_current_process_permission", {
+          target_process: processId,
+          target_permission: "audit.read",
+        }),
       ]);
 
-  if (editPermissionError || registerPermissionError || piiPermissionError) {
+  if (editPermissionError || registerPermissionError || piiPermissionError || lifecyclePermissionError || auditPermissionError) {
     throw new Error("Unable to verify process-scoped permissions.");
   }
 
@@ -84,6 +96,7 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
   const canEdit = canGovern || Boolean(scopedCanEdit);
   const canManageRegister = canGovern || Boolean(scopedCanManageRegister);
   const canRequestPii = !canGovern && Boolean(scopedCanReadPii);
+  const canReadLifecycle = canGovern || Boolean(scopedCanReadLifecycle) || Boolean(scopedCanReadAudit);
 
   let initialMembers: Array<{
     user_id: string;
@@ -152,7 +165,7 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
     comment: string | null;
     decided_at: string;
   };
-  const { data: workflowRows, error: workflowError } = canGovern
+  const { data: workflowRows, error: workflowError } = canReadLifecycle
     ? await supabase.from("process_workflow_requests")
         .select("id, action, status, reason, required_approvals, requested_at")
         .eq("process_id", processId)
@@ -175,6 +188,15 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
     ...request,
     approvals: workflowApprovals.filter((approval) => approval.request_id === request.id),
   }));
+
+  const { data: lifecycleEvents, error: lifecycleError } = canReadLifecycle
+    ? await supabase.from("process_lifecycle_events")
+        .select("id, action, from_status, to_status, reason, occurred_at")
+        .eq("process_id", processId)
+        .order("occurred_at", { ascending: false })
+        .limit(30)
+    : { data: [], error: null };
+  if (lifecycleError) throw new Error("Unable to load process lifecycle history.");
 
   const { data: contests, error: contestsError } = await supabase.from("contests")
     .select("id, title, description, display_order")
@@ -218,6 +240,25 @@ export default async function ProcessWorkspacePage({ params }: PageProps) {
           canGovern={canGovern}
           requests={governanceRequests}
         />
+        {canReadLifecycle ? (
+          <div style={{ borderTop: "1px solid var(--border)", marginTop: 20, paddingTop: 18 }}>
+            <h3 style={{ margin: "0 0 12px" }}>Lifecycle history</h3>
+            {lifecycleEvents && lifecycleEvents.length > 0 ? (
+              <ol className="stack" style={{ paddingLeft: 22 }}>
+                {lifecycleEvents.map((event) => (
+                  <li key={event.id}>
+                    <strong>{event.action.replaceAll("_", " ")}</strong>
+                    <span className="muted"> · {event.from_status.replaceAll("_", " ")} → {event.to_status.replaceAll("_", " ")}</span>
+                    <p style={{ margin: "4px 0" }}>{event.reason}</p>
+                    <p className="muted" style={{ margin: 0 }}>{new Date(event.occurred_at).toLocaleString()}</p>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="muted">No lifecycle transitions have been recorded yet.</p>
+            )}
+          </div>
+        ) : null}
       </section>
 
       {canGovern && (

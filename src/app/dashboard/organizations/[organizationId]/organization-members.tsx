@@ -103,7 +103,7 @@ export function OrganizationMembers({
       link.searchParams.set("token", payload.invitation.token);
       setInviteLink(link.toString());
       setEmail("");
-      setNotice("Invitation created. Copy the link and share it with the invitee through your chosen channel.");
+      setNotice("Invitation created and queued for email delivery. You can also copy the link below and share it directly.");
       await refresh();
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : "Unable to create the invitation.");

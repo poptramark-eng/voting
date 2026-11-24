@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "schedules": {
+    "invitation-email-worker": {
+      "schedule": "0 0 * * *",
+      "path": "/api/internal/notifications/process-invitations",
+      "requestMethod": "GET"
+    }
+  }
+}

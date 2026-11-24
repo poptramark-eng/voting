@@ -239,6 +239,56 @@ export type Database = {
           },
         ]
       }
+      organization_invitation_email_outbox: {
+        Row: {
+          attempt_count: number
+          available_at: string
+          created_at: string
+          id: string
+          invitation_id: string
+          last_error: string | null
+          lock_token: string | null
+          locked_at: string | null
+          provider_email_id: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          attempt_count?: number
+          available_at?: string
+          created_at?: string
+          id?: string
+          invitation_id: string
+          last_error?: string | null
+          lock_token?: string | null
+          locked_at?: string | null
+          provider_email_id?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempt_count?: number
+          available_at?: string
+          created_at?: string
+          id?: string
+          invitation_id?: string
+          last_error?: string | null
+          lock_token?: string | null
+          locked_at?: string | null
+          provider_email_id?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invitation_email_outbox_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: true
+            referencedRelation: "organization_invitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_invitations: {
         Row: {
           accepted_at: string | null
@@ -940,129 +990,6 @@ export type Database = {
           },
         ]
       }
-      voter_register_snapshot_approvals: {
-        Row: {
-          approver_user_id: string
-          comment: string | null
-          decided_at: string
-          decision: string
-          id: string
-          snapshot_id: string
-        }
-        Insert: {
-          approver_user_id: string
-          comment?: string | null
-          decided_at?: string
-          decision: string
-          id?: string
-          snapshot_id: string
-        }
-        Update: {
-          approver_user_id?: string
-          comment?: string | null
-          decided_at?: string
-          decision?: string
-          id?: string
-          snapshot_id?: string
-        }
-        Relationships: []
-      }
-      voter_register_snapshot_entries: {
-        Row: {
-          eligibility_status: string
-          identity_payload: Json
-          ordinal: number
-          snapshot_id: string
-          voter_register_entry_id: string
-        }
-        Insert: {
-          eligibility_status: string
-          identity_payload: Json
-          ordinal: number
-          snapshot_id: string
-          voter_register_entry_id: string
-        }
-        Update: {
-          eligibility_status?: string
-          identity_payload?: Json
-          ordinal?: number
-          snapshot_id?: string
-          voter_register_entry_id?: string
-        }
-        Relationships: []
-      }
-      voter_register_snapshots: {
-        Row: {
-          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
-          created_at: string
-          eligible_count: number
-          event_id: string
-          finalized_at: string | null
-          id: string
-          integrity_digest: string
-          organization_id: string
-          process_id: string
-          reopened_at: string | null
-          reopened_by: string | null
-          reopen_reason: string | null
-          rejected_count: number
-          register_revision: number
-          requested_by: string
-          required_approvals: number
-          resolved_at: string | null
-          revoked_count: number
-          status: string
-          total_entry_count: number
-          version: number
-        }
-        Insert: {
-          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
-          created_at?: string
-          eligible_count: number
-          event_id: string
-          finalized_at?: string | null
-          id?: string
-          integrity_digest: string
-          organization_id: string
-          process_id: string
-          reopened_at?: string | null
-          reopened_by?: string | null
-          reopen_reason?: string | null
-          rejected_count: number
-          register_revision: number
-          requested_by: string
-          required_approvals: number
-          resolved_at?: string | null
-          revoked_count: number
-          status?: string
-          total_entry_count: number
-          version: number
-        }
-        Update: {
-          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
-          created_at?: string
-          eligible_count?: number
-          event_id?: string
-          finalized_at?: string | null
-          id?: string
-          integrity_digest?: string
-          organization_id?: string
-          process_id?: string
-          reopened_at?: string | null
-          reopened_by?: string | null
-          reopen_reason?: string | null
-          rejected_count?: number
-          register_revision?: number
-          requested_by?: string
-          required_approvals?: number
-          resolved_at?: string | null
-          revoked_count?: number
-          status?: string
-          total_entry_count?: number
-          version?: number
-        }
-        Relationships: []
-      }
       voter_register_entries: {
         Row: {
           contact_email: string | null
@@ -1116,6 +1043,195 @@ export type Database = {
             columns: ["process_id"]
             isOneToOne: false
             referencedRelation: "voting_processes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voter_register_snapshot_approvals: {
+        Row: {
+          approver_user_id: string
+          comment: string | null
+          decided_at: string
+          decision: string
+          id: string
+          snapshot_id: string
+        }
+        Insert: {
+          approver_user_id: string
+          comment?: string | null
+          decided_at?: string
+          decision: string
+          id?: string
+          snapshot_id: string
+        }
+        Update: {
+          approver_user_id?: string
+          comment?: string | null
+          decided_at?: string
+          decision?: string
+          id?: string
+          snapshot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voter_register_snapshot_approvals_approver_user_id_fkey"
+            columns: ["approver_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voter_register_snapshot_approvals_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "voter_register_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voter_register_snapshot_entries: {
+        Row: {
+          eligibility_status: string
+          identity_payload: Json
+          ordinal: number
+          snapshot_id: string
+          voter_register_entry_id: string
+        }
+        Insert: {
+          eligibility_status: string
+          identity_payload: Json
+          ordinal: number
+          snapshot_id: string
+          voter_register_entry_id: string
+        }
+        Update: {
+          eligibility_status?: string
+          identity_payload?: Json
+          ordinal?: number
+          snapshot_id?: string
+          voter_register_entry_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voter_register_snapshot_entries_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "voter_register_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voter_register_snapshot_entries_voter_register_entry_id_fkey"
+            columns: ["voter_register_entry_id"]
+            isOneToOne: false
+            referencedRelation: "voter_register_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voter_register_snapshots: {
+        Row: {
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          created_at: string
+          eligible_count: number
+          event_id: string
+          finalized_at: string | null
+          id: string
+          integrity_digest: string
+          organization_id: string
+          process_id: string
+          register_revision: number
+          rejected_count: number
+          reopen_reason: string | null
+          reopened_at: string | null
+          reopened_by: string | null
+          requested_by: string
+          required_approvals: number
+          resolved_at: string | null
+          revoked_count: number
+          status: string
+          total_entry_count: number
+          version: number
+        }
+        Insert: {
+          assurance_tier: Database["public"]["Enums"]["assurance_tier"]
+          created_at?: string
+          eligible_count: number
+          event_id: string
+          finalized_at?: string | null
+          id?: string
+          integrity_digest: string
+          organization_id: string
+          process_id: string
+          register_revision: number
+          rejected_count: number
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          requested_by: string
+          required_approvals: number
+          resolved_at?: string | null
+          revoked_count: number
+          status?: string
+          total_entry_count: number
+          version: number
+        }
+        Update: {
+          assurance_tier?: Database["public"]["Enums"]["assurance_tier"]
+          created_at?: string
+          eligible_count?: number
+          event_id?: string
+          finalized_at?: string | null
+          id?: string
+          integrity_digest?: string
+          organization_id?: string
+          process_id?: string
+          register_revision?: number
+          rejected_count?: number
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          requested_by?: string
+          required_approvals?: number
+          resolved_at?: string | null
+          revoked_count?: number
+          status?: string
+          total_entry_count?: number
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voter_register_snapshots_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "voting_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voter_register_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voter_register_snapshots_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "voting_processes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voter_register_snapshots_reopened_by_fkey"
+            columns: ["reopened_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voter_register_snapshots_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
             referencedColumns: ["id"]
           },
         ]
@@ -1274,6 +1390,18 @@ export type Database = {
         }
         Returns: string
       }
+      claim_organization_invitation_email_outbox: {
+        Args: { target_limit?: number }
+        Returns: {
+          email: string
+          invitation_id: string
+          lock_token: string
+          organization_name: string
+          outbox_id: string
+          role: Database["public"]["Enums"]["organization_member_role"]
+          token: string
+        }[]
+      }
       claim_paystack_webhook_event: {
         Args: { target_event_key: string }
         Returns: Json
@@ -1281,6 +1409,14 @@ export type Database = {
       close_expired_process: {
         Args: { target_process: string }
         Returns: string
+      }
+      complete_organization_invitation_email_outbox: {
+        Args: {
+          target_lock_token: string
+          target_outbox: string
+          target_provider_email_id: string
+        }
+        Returns: boolean
       }
       complete_paystack_payment: {
         Args: {
@@ -1313,8 +1449,24 @@ export type Database = {
         }
         Returns: Json
       }
+      decide_voter_register_finalization: {
+        Args: {
+          target_comment?: string
+          target_decision: string
+          target_snapshot: string
+        }
+        Returns: string
+      }
       emergency_suspend_process: {
         Args: { evidence?: Json; reason: string; target_process: string }
+        Returns: string
+      }
+      fail_organization_invitation_email_outbox: {
+        Args: {
+          target_error: string
+          target_lock_token: string
+          target_outbox: string
+        }
         Returns: string
       }
       fail_paystack_webhook_event: {
@@ -1327,6 +1479,10 @@ export type Database = {
       }
       has_current_process_permission: {
         Args: { target_permission: string; target_process: string }
+        Returns: boolean
+      }
+      is_organization_invitation_email_lease_valid: {
+        Args: { target_lock_token: string; target_outbox: string }
         Returns: boolean
       }
       list_organization_invitations: {
@@ -1365,6 +1521,32 @@ export type Database = {
         }
         Returns: Json
       }
+      read_voter_register_snapshot_summaries: {
+        Args: { target_process: string }
+        Returns: {
+          approval_count: number
+          assurance_tier: string
+          created_at: string
+          eligible_count: number
+          finalized_at: string
+          id: string
+          register_revision: number
+          rejected_count: number
+          reopen_reason: string
+          reopened_at: string
+          requested_by_is_current_user: boolean
+          required_approvals: number
+          resolved_at: string
+          revoked_count: number
+          status: string
+          total_entry_count: number
+          version: number
+        }[]
+      }
+      reopen_voter_register_snapshot: {
+        Args: { target_reason: string; target_snapshot: string }
+        Returns: string
+      }
       request_process_resumption: {
         Args: {
           corrective_actions?: Json
@@ -1393,36 +1575,6 @@ export type Database = {
       request_voter_register_finalization: {
         Args: { target_process: string; target_reason: string }
         Returns: string
-      }
-      decide_voter_register_finalization: {
-        Args: { target_comment?: string; target_decision: string; target_snapshot: string }
-        Returns: string
-      }
-      reopen_voter_register_snapshot: {
-        Args: { target_reason: string; target_snapshot: string }
-        Returns: string
-      }
-      read_voter_register_snapshot_summaries: {
-        Args: { target_process: string }
-        Returns: {
-          approval_count: number
-          assurance_tier: string
-          created_at: string
-          eligible_count: number
-          finalized_at: string | null
-          id: string
-          register_revision: number
-          reopen_reason: string | null
-          reopened_at: string | null
-          rejected_count: number
-          requested_by_is_current_user: boolean
-          required_approvals: number
-          resolved_at: string | null
-          revoked_count: number
-          status: string
-          total_entry_count: number
-          version: number
-        }[]
       }
       revoke_event_role: {
         Args: { target_event: string; target_user: string }
