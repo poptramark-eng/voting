@@ -60,3 +60,5 @@ Status: modular-monolith decision accepted; identity boundary defined; implement
 - End-to-end verifiable voting protocol and cryptographic key management.
 - Tenant isolation strategy refinements and authorization test matrix.
 - Kenya legal, regulatory and privacy review.
+
+- [ADR 0003: Separate voter eligibility from anonymous ballot casting](./adr/0003-anonymous-voter-credentials-and-ballot-separation.md) — proposed credential issuance and ballot separation; requires protocol and cryptographic review before implementation.
